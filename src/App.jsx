@@ -451,8 +451,14 @@ const App = () => {
       <nav className="flex items-center justify-between px-8 py-4 z-[110] bg-color">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveOverlay(null)}><Sparkles className="w-6 h-6 text-main" /><span className="font-black text-xl tracking-[-1.5px] text-main">OCRMUV</span></div>
         <div className="hidden lg:flex items-center gap-1">
-          {['Início', 'Tecnologia', 'Privacidade', 'Planos', 'Suporte'].map(i => (
-            <button key={i} onClick={() => setActiveOverlay(i === 'Início' ? null : i.toLowerCase())} className="nav-link">{i === 'Planos' ? 'Planos' : i}</button>
+          {[
+            { label: 'Início', key: null },
+            { label: 'Tecnologia', key: 'tech' },
+            { label: 'Privacidade', key: 'privacy' },
+            { label: 'Planos', key: 'planos' },
+            { label: 'Suporte', key: 'support' }
+          ].map(i => (
+            <button key={i.label} onClick={() => setActiveOverlay(i.key)} className="nav-link">{i.label}</button>
           ))}
         </div>
         <div className="flex items-center gap-4">
@@ -562,12 +568,55 @@ const App = () => {
                 <div className="grid md:grid-cols-2 gap-20">
                   <div className="flex flex-col gap-10">
                     <h2 className="text-5xl font-black tracking-tighter text-main">Tecnologia de <br />Próxima Geração.</h2>
-                    <p className="text-muted text-sm leading-loose">Software local-first que utiliza visão computacional via browser.</p>
+                    <p className="text-muted text-sm leading-loose">Software local-first que utiliza visão computacional via browser. A nossa arquitetura utiliza Tesseract.js sob WebAssembly, garantindo que nenhum documento sensível saia da infraestrutura da sua empresa.</p>
                   </div>
                   <div className="grid grid-cols-2 gap-6">
                     {[{ icon: <Cpu />, title: 'Motor WASM' }, { icon: <Database />, title: 'Local-First' }, { icon: <Shield />, title: 'AES-256' }, { icon: <Globe />, title: 'Distribuído' }].map(item => (
                       <div key={item.title} className="glass p-6"><div className="text-blue-500 mb-4">{item.icon}</div><h4 className="font-black text-sm text-main">{item.title}</h4></div>
                     ))}
+                  </div>
+                </div>
+              )}
+              {activeOverlay === 'privacy' && (
+                <div className="max-w-3xl mx-auto flex flex-col gap-12">
+                  <div className="text-center">
+                    <h2 className="text-5xl font-black tracking-tighter text-main mb-4">Privacidade Enterprise.</h2>
+                    <p className="text-muted text-sm font-bold uppercase tracking-widest text-blue-500">O seu dado nunca sai do browser.</p>
+                  </div>
+                  <div className="grid gap-8">
+                    <div className="glass p-10 flex flex-col gap-4">
+                      <h3 className="text-xl font-black text-main">Segurança por Desenho</h3>
+                      <p className="text-muted text-sm leading-relaxed">Ao contrário de soluções cloud tradicionais, o OCRMUV processa o reconhecimento de texto diretamente no hardware do utilizador. Isto elimina riscos de intermediação de dados e fugas de informação.</p>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="panel p-8"><h4 className="font-black text-blue-500 text-[10px] uppercase mb-4 tracking-widest">Sem Logs de Dados</h4><p className="text-xs text-secondary font-medium">Não armazenamos o conteúdo dos seus documentos. As estatísticas são meramente metadados de volume e performance.</p></div>
+                      <div className="panel p-8"><h4 className="font-black text-blue-500 text-[10px] uppercase mb-4 tracking-widest">Conformidade GDPR/LGPD</h4><p className="text-xs text-secondary font-medium">Arquitetura totalmente compatível com as normas internacionais de proteção de dados e privacidade corporativa.</p></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {activeOverlay === 'support' && (
+                <div className="max-w-4xl mx-auto flex flex-col gap-12">
+                  <div className="flex flex-col gap-4">
+                    <h2 className="text-5xl font-black tracking-tighter text-main">Suporte Prioritário.</h2>
+                    <p className="text-muted text-sm font-medium">A nossa equipa de engenharia está disponível para integrar o OCRMUV no seu fluxo de trabalho corporativo.</p>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-6">
+                    <div className="glass p-8 flex flex-col gap-6">
+                      <Mail className="text-blue-500 w-8 h-8" />
+                      <div><h4 className="font-black text-sm text-main">Email Industrial</h4><p className="text-[10px] font-bold text-muted mt-1 uppercase tracking-widest">enterprise@orcmuv.com</p></div>
+                      <button className="btn-tesla-blue py-3 text-[10px] font-black uppercase">Enviar Ticket</button>
+                    </div>
+                    <div className="glass p-8 flex flex-col gap-6">
+                      <Headphones className="text-blue-500 w-8 h-8" />
+                      <div><h4 className="font-black text-sm text-main">Linha Direta</h4><p className="text-[10px] font-bold text-muted mt-1 uppercase tracking-widest">+258 84 000 0000</p></div>
+                      <button className="panel py-3 text-[10px] font-black uppercase hover:bg-main/5">Ligar Agora</button>
+                    </div>
+                    <div className="glass p-8 flex flex-col gap-6 border-blue-500/20">
+                      <HelpCircle className="text-blue-500 w-8 h-8" />
+                      <div><h4 className="font-black text-sm text-main">Centro de Ajuda</h4><p className="text-[10px] font-bold text-muted mt-1 uppercase tracking-widest">Documentação API</p></div>
+                      <button className="panel py-3 text-[10px] font-black uppercase hover:bg-main/5">Ver Docs</button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -579,44 +628,44 @@ const App = () => {
         )}
       </AnimatePresence>
 
-      <main className="flex-1 flex flex-col px-8 md:px-16 pt-2 pb-8 max-w-[1600px] mx-auto w-full relative">
-        <header className="mb-10 text-center md:text-left">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 mb-4 justify-center md:justify-start">
+      <main className="flex-1 flex flex-col px-8 md:px-16 pt-2 pb-4 max-w-[1600px] mx-auto w-full relative overflow-hidden">
+        <header className="mb-6 text-center md:text-left shrink-0">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 mb-2 justify-center md:justify-start">
             <div className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
-              <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">Corporate Edition 2024</p>
+              <p className="text-[9px] font-black text-blue-500 uppercase tracking-[0.3em]">Corporate Edition 2024</p>
             </div>
           </motion.div>
-          <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-7xl font-black text-main tracking-tighter leading-[0.9]">
+          <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-6xl font-black text-main tracking-tighter leading-[0.85]">
             Inteligência Documental <br />
             <span className="text-secondary opacity-50 italic">para o Sector Corporativo.</span>
           </motion.h1>
-          <p className="mt-6 text-muted font-medium text-sm md:text-base max-w-2xl">A produtividade da sua empresa elevada por redes neuronais privadas. Transforme volumes massivos de dados em ativos digitais em segundos.</p>
+          <p className="mt-3 text-muted font-medium text-xs md:text-sm max-w-2xl">A produtividade da sua empresa elevada por redes neuronais privadas. Transforme volumes massivos de dados em segundos.</p>
         </header>
-        <div className="flex-1 grid lg:grid-cols-12 gap-10">
-          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="lg:col-span-12 xl:col-span-5 flex flex-col gap-6">
-            <div {...getRootProps()} className={`glass min-h-[400px] flex flex-col items-center justify-center p-12 transition-all duration-300 cursor-pointer ${isDragActive ? 'border-blue-500 border-2 shadow-2xl' : 'hover:border-main/20'}`}>
-              <input {...getInputProps()} /><div className="w-24 h-24 rounded-3xl bg-gray-500/5 flex items-center justify-center mb-8">{file ? <CheckCircle2 className="w-12 h-12 text-blue-500" /> : <Upload className="w-12 h-12 text-main/10" />}</div><h2 className="text-2xl font-black text-main mb-2">{file ? file.name : 'Digitalização em Espera'}</h2><p className="text-muted text-[10px] font-black uppercase tracking-[0.4em]">Arraste para o Campo de Foco</p>
+        <div className="flex-1 grid lg:grid-cols-12 gap-6 min-h-0 mb-4">
+          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="lg:col-span-12 xl:col-span-5 flex flex-col gap-4 min-h-0">
+            <div {...getRootProps()} className={`glass flex-1 flex flex-col items-center justify-center p-8 transition-all duration-300 cursor-pointer ${isDragActive ? 'border-blue-500 border-2 shadow-2xl' : 'hover:border-main/20'}`}>
+              <input {...getInputProps()} /><div className="w-16 h-16 rounded-2xl bg-gray-500/5 flex items-center justify-center mb-6">{file ? <CheckCircle2 className="w-8 h-8 text-blue-500" /> : <Upload className="w-8 h-8 text-main/10" />}</div><h2 className="text-xl font-black text-main mb-1">{file ? file.name : 'Digitalização em Espera'}</h2><p className="text-muted text-[9px] font-black uppercase tracking-[0.4em]">Arraste para o Campo de Foco</p>
             </div>
-            <button onClick={handleProcess} disabled={!file || loading} className={`w-full py-5 rounded-lg flex items-center justify-center gap-4 transition-all ${!file || loading ? 'bg-gray-500/10 text-muted cursor-not-allowed' : 'btn-tesla-blue shadow-2xl'}`}>
-              {loading ? <><Loader2 className="animate-spin w-5 h-5" /> <span className="text-xs font-black">{progress}%</span></> : <><Zap className="w-5 h-5" /> <span className="text-xs font-black tracking-widest">EXECUTAR SCAN</span></>}
+            <button onClick={handleProcess} disabled={!file || loading} className={`shrink-0 py-4 rounded-lg flex items-center justify-center gap-4 transition-all ${!file || loading ? 'bg-gray-500/10 text-muted cursor-not-allowed' : 'btn-tesla-blue shadow-2xl'}`}>
+              {loading ? <><Loader2 className="animate-spin w-4 h-4" /> <span className="text-xs font-black">{progress}%</span></> : <><Zap className="w-4 h-4" /> <span className="text-[10px] font-black tracking-widest uppercase">EXECUTAR SCAN</span></>}
             </button>
           </motion.div>
-          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }} className="lg:col-span-12 xl:col-span-7 glass p-10 flex flex-col min-h-0">
-            <div className="flex justify-between items-center mb-6 shrink-0 underline-offset-8">
-              <div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50" /><h3 className="text-[10px] font-black uppercase tracking-[0.6em] text-main">Terminal Neural</h3></div>
+          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }} className="lg:col-span-12 xl:col-span-7 glass p-8 flex flex-col min-h-0">
+            <div className="flex justify-between items-center mb-4 shrink-0 underline-offset-8">
+              <div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50" /><h3 className="text-[9px] font-black uppercase tracking-[0.6em] text-main">Terminal Neural</h3></div>
               <div className="flex gap-2">
-                {result && <button onClick={() => navigator.clipboard.writeText(result)} className="p-3 bg-gray-500/5 hover:bg-gray-500/10 rounded-xl text-main text-xs"><Copy className="w-4 h-4" /></button>}
-                <button onClick={() => { setResult(''); setFile(null); }} className="p-3 bg-gray-500/5 hover:bg-gray-500/10 rounded-xl text-main"><RefreshCcw className="w-4 h-4" /></button>
+                {result && <button onClick={() => navigator.clipboard.writeText(result)} className="p-2 bg-gray-500/5 hover:bg-gray-500/10 rounded-xl text-main text-xs"><Copy className="w-4 h-4" /></button>}
+                <button onClick={() => { setResult(''); setFile(null); }} className="p-2 bg-gray-500/5 hover:bg-gray-500/10 rounded-xl text-main"><RefreshCcw className="w-4 h-4" /></button>
               </div>
             </div>
-            <div className="flex-1 panel p-10 overflow-y-auto custom-scrollbar font-mono text-sm leading-relaxed text-main selection:bg-blue-500 selection:text-white">
-              {error ? <p className="text-red-500 font-bold">{error}</p> : result ? <pre className="whitespace-pre-wrap">{result}</pre> : loading ? <div className="h-full flex flex-col items-center justify-center gap-6 text-muted font-black uppercase text-[10px] tracking-widest"><Loader2 className="animate-spin w-10 h-10" /> A ler v2.0...</div> : <div className="h-full flex flex-col items-center justify-center opacity-10 text-main font-black uppercase text-[10px] tracking-[0.5em]"><FileText className="w-16 h-16 mb-4" /> Vazio</div>}
+            <div className="flex-1 panel p-8 overflow-y-auto custom-scrollbar font-mono text-sm leading-relaxed text-main selection:bg-blue-500 selection:text-white">
+              {error ? <p className="text-red-500 font-bold">{error}</p> : result ? <pre className="whitespace-pre-wrap">{result}</pre> : loading ? <div className="h-full flex flex-col items-center justify-center gap-4 text-muted font-black uppercase text-[9px] tracking-widest"><Loader2 className="animate-spin w-8 h-8" /> A ler v2.0...</div> : <div className="h-full flex flex-col items-center justify-center opacity-10 text-main font-black uppercase text-[9px] tracking-[0.5em]"><FileText className="w-12 h-12 mb-2" /> Vazio</div>}
             </div>
           </motion.div>
         </div>
       </main>
 
-      <footer className="shrink-0 px-8 py-8 border-t border-gray-500/10 max-w-[1600px] mx-auto w-full opacity-50 hover:opacity-100 transition-opacity flex justify-between items-center gap-6 text-[9px] font-black text-muted uppercase tracking-widest">
+      <footer className="shrink-0 px-8 py-4 border-t border-gray-500/10 max-w-[1600px] mx-auto w-full opacity-50 hover:opacity-100 transition-opacity flex justify-between items-center gap-6 text-[8px] font-black text-muted uppercase tracking-widest">
         <p>© 2024 OCRMUV Inc. <span className="mx-4 text-gray-500/20">|</span> Automating Intelligence</p>
         <div className="flex items-center gap-10">
           {['Privacidade', 'Termos', 'Contatos', 'API'].map(link => <button key={link} onClick={() => setActiveOverlay(link === 'Privacidade' ? 'privacy' : 'support')} className="hover:text-blue-500 transition-colors">{link}</button>)}
