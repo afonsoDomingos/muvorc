@@ -31,8 +31,11 @@ const App = () => {
   const [currency, setCurrency] = useState('USD');
 
   // Admin State
-  const [adminStats, setAdminStats] = useState({ totalUsers: 0, totalOCR: 0, recentOCR: [] });
+  const [adminStats, setAdminStats] = useState({ totalUsers: 0, totalOCR: 0, pendingPayments: 0, recentOCR: [] });
   const [adminUsers, setAdminUsers] = useState([]);
+  const [adminPayments, setAdminPayments] = useState([]);
+  const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
+  const [paymentProofLoading, setPaymentProofLoading] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -42,7 +45,10 @@ const App = () => {
     if (token) {
       if (!user) fetchUser();
       if (activeOverlay === 'dashboard') fetchHistory();
-      if (activeOverlay === 'admin' && user?.role === 'admin') fetchAdminData();
+      if (activeOverlay === 'admin' && user?.role === 'admin') {
+        fetchAdminData();
+        fetchAdminPayments();
+      }
     }
   }, [token, user, activeOverlay]);
 
@@ -77,6 +83,16 @@ const App = () => {
       setAdminUsers(usersRes.data);
     } catch (err) {
       console.error('Erro admin:', err);
+    }
+  };
+
+  const fetchAdminPayments = async () => {
+    try {
+      const apiUrl = import.meta.env.MODE === 'development' ? 'http://localhost:5000/api/admin/payments' : '/api/admin/payments';
+      const res = await axios.get(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
+      setAdminPayments(res.data);
+    } catch (err) {
+      console.error('Erro pagamentos:', err);
     }
   };
 
@@ -198,6 +214,45 @@ const App = () => {
     }
   };
 
+  const approvePayment = async (id, status, subscription) => {
+    try {
+      const apiUrl = import.meta.env.MODE === 'development' ? `http://localhost:5000/api/admin/payment/${id}` : `/api/admin/payment/${id}`;
+      await axios.patch(apiUrl, { status, subscription }, { headers: { Authorization: `Bearer ${token}` } });
+      alert(`Pagamento ${status === 'approved' ? 'Aprovado' : 'Rejeitado'}`);
+      fetchAdminData();
+      fetchAdminPayments();
+    } catch (err) {
+      alert('Erro ao processar pagamento');
+    }
+  };
+
+  const handlePaymentUpload = async (plan, amount, curr, fileProof) => {
+    if (!token) return setActiveOverlay('auth');
+    setPaymentProofLoading(true);
+    try {
+      const reader = new FileReader();
+      const imageBase64 = await new Promise((resolve) => {
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(fileProof);
+      });
+
+      const apiUrl = import.meta.env.MODE === 'development' ? 'http://localhost:5000/api/payments/upload' : '/api/payments/upload';
+      await axios.post(apiUrl, {
+        planName: plan,
+        amount,
+        currency: curr,
+        imageBase64
+      }, { headers: { Authorization: `Bearer ${token}` } });
+
+      alert('Comprovativo enviado! Aguarde a aprovação do Admin.');
+      setSelectedPlanForPayment(null);
+    } catch (err) {
+      alert('Erro ao enviar comprovativo');
+    } finally {
+      setPaymentProofLoading(false);
+    }
+  };
+
   const exchangeRates = {
     USD: { symbol: '$', rate: 1, suffix: '' },
     EUR: { symbol: '€', rate: 0.92, suffix: '' },
@@ -238,6 +293,35 @@ const App = () => {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-10">
+        {/* Payments Verification */}
+        <div className="flex flex-col gap-6">
+          <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-2">Verificação de Pagamentos</h4>
+          <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-4">
+            {adminPayments.filter(p => p.status === 'pending').map(p => (
+              <div key={p._id} className="glass p-6 flex flex-col gap-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h5 className="font-black text-sm">{p.userId?.name || 'Utilizador'}</h5>
+                    <p className="text-[10px] font-bold text-muted uppercase tracking-widest">{p.userId?.email} • {p.planName}</p>
+                    <p className="text-sm font-black text-blue-500 mt-2">{p.amount} {p.currency}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => approvePayment(p._id, 'approved', p.planName)} title="Aprovar" className="p-3 text-green-500 bg-green-500/5 hover:bg-green-500/10 rounded-lg transition-all"><CheckCircle2 className="w-4 h-4" /></button>
+                    <button onClick={() => approvePayment(p._id, 'rejected')} title="Rejeitar" className="p-3 text-red-500 bg-red-500/5 hover:bg-red-500/10 rounded-lg transition-all"><X className="w-4 h-4" /></button>
+                  </div>
+                </div>
+                <a href={p.proofUrl} target="_blank" rel="noreferrer" className="block w-full h-40 rounded-lg bg-gray-500/5 border border-gray-500/10 overflow-hidden relative group">
+                  <img src={p.proofUrl} className="w-full h-full object-cover opacity-50 group-hover:opacity-100 transition-all" alt="Comprovativo" />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/40 text-[10px] font-black uppercase tracking-widest text-white">Ver Comprovativo</div>
+                </a>
+              </div>
+            ))}
+            {adminPayments.filter(p => p.status === 'pending').length === 0 && (
+              <div className="panel p-20 flex flex-col items-center justify-center opacity-20 border-dashed"><Activity className="w-10 h-10 mb-4" /><p className="text-[10px] font-black uppercase tracking-widest">Sem pagamentos pendentes</p></div>
+            )}
+          </div>
+        </div>
+
         {/* Users List */}
         <div className="flex flex-col gap-6">
           <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-2">Base de Utilizadores</h4>
@@ -251,23 +335,6 @@ const App = () => {
                 {u.email !== 'admin@orcmuv.com' && (
                   <button onClick={() => deleteUser(u._id)} className="p-3 text-red-500 bg-red-500/5 hover:bg-red-500/10 rounded-lg transition-all"><Trash2 className="w-4 h-4" /></button>
                 )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* System Logs / Recent Activity */}
-        <div className="flex flex-col gap-6">
-          <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-2">Últimas Atividades</h4>
-          <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-4">
-            {adminStats.recentOCR.map(ocr => (
-              <div key={ocr._id} className="panel p-6 flex items-center gap-6">
-                <div className="w-10 h-10 bg-blue-500/5 rounded flex items-center justify-center text-blue-500"><FileText className="w-5 h-5" /></div>
-                <div className="flex-1">
-                  <h5 className="font-black text-xs">{ocr.fileName}</h5>
-                  <p className="text-[9px] font-bold text-muted uppercase">Extraído por {ocr.userId?.email || 'Visitante'}</p>
-                </div>
-                <span className="text-[9px] font-black text-muted">{new Date(ocr.createdAt).toLocaleTimeString()}</span>
               </div>
             ))}
           </div>
@@ -376,23 +443,75 @@ const App = () => {
               {activeOverlay === 'precos' && (
                 <div className="flex flex-col items-center">
                   <h2 className="text-4xl font-black mb-6 tracking-tighter text-main">Escolha o seu Futuro.</h2>
-                  <div className="flex glass p-1 gap-1 mb-12 rounded-full overflow-hidden">
-                    {['USD', 'EUR', 'MZN'].map(c => <button key={c} onClick={() => setCurrency(c)} className={`px-6 py-2 text-[10px] font-black tracking-widest transition-all rounded-full ${currency === c ? 'bg-blue-500 text-white' : 'hover:bg-main/5 text-muted'}`}>{c}</button>)}
-                  </div>
-                  <div className="grid md:grid-cols-3 gap-8 w-full">
-                    {[
-                      { name: 'LOCAL', usd: 0, features: ['5 Scans por dia', 'Processamento Local', 'Exportar TXT'], btn: 'Plano Grátis' },
-                      { name: 'HYPER', usd: 19, features: ['Scans Ilimitados', 'Sincronização Cloud', 'Motor Prioritário', 'Suporte 24h'], active: true, btn: 'Subscrever' },
-                      { name: 'NEURAL', usd: 49, features: ['Acesso via API', 'Múltiplos Utilizadores', 'Segurança Bancária', 'Painel Admin'], btn: 'Contactar Equipa' }
-                    ].map(plan => (
-                      <div key={plan.name} className={`glass p-10 flex flex-col gap-6 relative ${plan.active ? 'border-blue-500 border-2 shadow-2xl' : ''}`}>
-                        <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40 text-main">{plan.name}</span>
-                        <div><h3 className="text-5xl font-black text-main">{formatPrice(plan.usd)}<span className="text-sm opacity-30 font-bold">/mês</span></h3><p className="text-[10px] font-bold text-muted mt-2 uppercase tracking-widest">Cobrado anualmente</p></div>
-                        <ul className="flex flex-col gap-4 flex-1">{plan.features.map(f => <li key={f} className="text-xs font-bold text-secondary flex items-center gap-2"><ArrowRight className="w-3 h-3 text-blue-500" /> {f}</li>)}</ul>
-                        <button className={`w-full py-4 font-black tracking-widest text-[10px] uppercase rounded ${plan.active ? 'btn-tesla-blue shadow-lg' : 'panel hover:bg-main/5'}`}>{plan.btn}</button>
+
+                  {selectedPlanForPayment ? (
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass p-12 max-w-xl w-full flex flex-col gap-8 border-blue-500/30 border">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-2xl font-black text-main underline underline-offset-8 decoration-blue-500">Pagamento {selectedPlanForPayment.name}</h3>
+                        <button onClick={() => setSelectedPlanForPayment(null)} className="p-2 hover:bg-gray-500/5 rounded-full"><X className="w-5 h-5" /></button>
                       </div>
-                    ))}
-                  </div>
+
+                      <div className="panel p-8 flex flex-col gap-6 bg-blue-500/5 border-blue-500/10">
+                        <div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,1)]" /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Dados Bancários para Upload</p></div>
+                        <div className="grid gap-4">
+                          <div className="flex justify-between text-xs font-bold border-b border-gray-500/5 pb-2"><span className="text-muted">Banco</span> <span className="text-main">Millennium Bim</span></div>
+                          <div className="flex justify-between text-xs font-bold border-b border-gray-500/5 pb-2"><span className="text-muted">Titular</span> <span className="text-main italic font-black">MUV DIGITAL Lda</span></div>
+                          <div className="flex justify-between text-xs font-bold border-b border-gray-500/5 pb-2"><span className="text-muted">NIB</span> <span className="text-main font-mono text-blue-500">0033 0000 1234 5678 9012 3</span></div>
+                          <div className="flex justify-between text-xs font-bold pt-2"><span className="text-muted">Total a Pagar</span> <span className="text-2xl font-black text-main">{formatPrice(selectedPlanForPayment.usd)}</span></div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-4">
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted ml-2">Anexar Comprovativo de Pagamento</label>
+                        <input
+                          type="file"
+                          id="payment-upload"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const f = e.target.files[0];
+                            if (f) handlePaymentUpload(selectedPlanForPayment.name, formatPrice(selectedPlanForPayment.usd), currency, f);
+                          }}
+                        />
+                        <label htmlFor="payment-upload" className={`cursor-pointer group glass border-2 border-dashed border-gray-500/20 hover:border-blue-500/40 p-10 flex flex-col items-center gap-5 transition-all duration-300 ${paymentProofLoading ? 'pointer-events-none opacity-50' : ''}`}>
+                          {paymentProofLoading ? <Loader2 className="animate-spin w-10 h-10 text-blue-500" /> : <Upload className="w-10 h-10 text-muted group-hover:text-blue-500 transition-colors" />}
+                          <div className="text-center">
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-main mb-1">{paymentProofLoading ? 'A CARREGAR SISTEMA...' : 'CLICAR PARA CARREGAR FOTO'}</p>
+                            <p className="text-[8px] font-bold text-muted uppercase tracking-widest">PNG, JPG ou JPEG até 5MB</p>
+                          </div>
+                        </label>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <>
+                      <div className="flex glass p-1 gap-1 mb-12 rounded-full overflow-hidden">
+                        {['USD', 'EUR', 'MZN'].map(c => <button key={c} onClick={() => setCurrency(c)} className={`px-6 py-2 text-[10px] font-black tracking-widest transition-all rounded-full ${currency === c ? 'bg-blue-500 text-white' : 'hover:bg-main/5 text-muted'}`}>{c}</button>)}
+                      </div>
+                      <div className="grid md:grid-cols-3 gap-8 w-full">
+                        {[
+                          { name: 'LOCAL', usd: 0, features: ['5 Scans por dia', 'Processamento Local', 'Exportar TXT'], btn: 'Plano Grátis' },
+                          { name: 'HYPER', usd: 19, features: ['Scans Ilimitados', 'Sincronização Cloud', 'Motor Prioritário', 'Suporte 24h'], active: true, btn: 'Subscrever' },
+                          { name: 'NEURAL', usd: 49, features: ['Acesso via API', 'Múltiplos Utilizadores', 'Segurança Bancária', 'Painel Admin'], btn: 'Contactar Equipa' }
+                        ].map(plan => (
+                          <div key={plan.name} className={`glass p-10 flex flex-col gap-6 relative ${plan.active ? 'border-blue-500 border-2 shadow-2xl' : ''}`}>
+                            <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40 text-main">{plan.name}</span>
+                            <div><h3 className="text-5xl font-black text-main">{formatPrice(plan.usd)}<span className="text-sm opacity-30 font-bold">/mês</span></h3><p className="text-[10px] font-bold text-muted mt-2 uppercase tracking-widest">Cobrado anualmente</p></div>
+                            <ul className="flex flex-col gap-4 flex-1">{plan.features.map(f => <li key={f} className="text-xs font-bold text-secondary flex items-center gap-2"><ArrowRight className="w-3 h-3 text-blue-500" /> {f}</li>)}</ul>
+                            <button
+                              onClick={() => {
+                                if (plan.usd === 0) return;
+                                if (!token) return setActiveOverlay('auth');
+                                setSelectedPlanForPayment(plan);
+                              }}
+                              className={`w-full py-4 font-black tracking-widest text-[10px] uppercase rounded transition-all active:scale-95 ${plan.active ? 'btn-tesla-blue shadow-lg hover:shadow-blue-500/20' : 'panel hover:bg-main/5'}`}
+                            >
+                              {plan.btn}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
               {activeOverlay === 'tech' && (
