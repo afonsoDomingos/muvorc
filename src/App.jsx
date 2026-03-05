@@ -298,13 +298,16 @@ const App = () => {
       <h2 className="text-4xl font-black mb-12 tracking-tighter">Escolha o seu Futuro.</h2>
       <div className="grid md:grid-cols-3 gap-8 w-full">
         {[
-          { name: 'LOCAL', price: '0€', features: ['5 Scans por dia', 'Processamento Local', 'Exportar TXT'], btn: 'Plano Grátis' },
-          { name: 'HYPER', price: '19€', features: ['Scans Ilimitados', 'Sincronização Cloud', 'Motor Prioritário', 'Suporte 24h'], active: true, btn: 'Subscrever' },
-          { name: 'NEURAL', price: '49€', features: ['Acesso via API', 'Múltiplos Utilizadores', 'Segurança Bancária', 'Painel Admin'], btn: 'Contactar Equipa' }
+          { name: 'LOCAL', price: '$0', sub: '0 MT', features: ['5 Scans por dia', 'Processamento Local', 'Exportar TXT'], btn: 'Plano Grátis' },
+          { name: 'HYPER', price: '$19', sub: '1.200 MT', features: ['Scans Ilimitados', 'Sincronização Cloud', 'Motor Prioritário', 'Suporte 24h'], active: true, btn: 'Subscrever' },
+          { name: 'NEURAL', price: '$49', sub: '3.100 MT', features: ['Acesso via API', 'Múltiplos Utilizadores', 'Segurança Bancária', 'Painel Admin'], btn: 'Contactar Equipa' }
         ].map((plan) => (
           <div key={plan.name} className={`glass p-10 flex flex-col gap-6 relative ${plan.active ? 'border-blue-500 border-2' : ''}`}>
             <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">{plan.name}</span>
-            <h3 className="text-5xl font-black text-main">{plan.price}<span className="text-sm opacity-30 font-bold">/mês</span></h3>
+            <div>
+              <h3 className="text-5xl font-black text-main">{plan.price}<span className="text-sm opacity-30 font-bold">/mês</span></h3>
+              <p className="text-sm font-bold text-blue-500 mt-1">{plan.sub}</p>
+            </div>
             <ul className="flex flex-col gap-4 flex-1">
               {plan.features.map(f => <li key={f} className="text-xs font-bold text-secondary flex items-center gap-2"><ArrowRight className="w-3 h-3 text-blue-500" /> {f}</li>)}
             </ul>
