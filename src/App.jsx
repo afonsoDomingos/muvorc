@@ -5,7 +5,7 @@ import {
   RefreshCcw, Search, Sun, Moon, AlertCircle, Sparkles,
   Shield, Zap, Globe, Menu, X, User, HelpCircle, ArrowRight,
   Cpu, Lock, Database, Headphones, Mail, Key, LogOut, Trash2,
-  BarChart3, Users, Settings, Activity
+  BarChart3, Users, Settings, Activity, Camera
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useDropzone } from 'react-dropzone';
@@ -36,6 +36,9 @@ const App = () => {
   const [adminPayments, setAdminPayments] = useState([]);
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
   const [paymentProofLoading, setPaymentProofLoading] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const videoRef = React.useRef(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -251,6 +254,44 @@ const App = () => {
     } finally {
       setPaymentProofLoading(false);
     }
+  };
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      setCameraStream(stream);
+      setIsCameraActive(true);
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch (err) {
+      alert('Erro ao aceder à câmara. Verifique as permissões.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setIsCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    const canvas = document.createElement('canvas');
+    const video = videoRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg');
+
+    // Convert dataUrl to File object
+    fetch(dataUrl)
+      .then(res => res.blob())
+      .then(blob => {
+        const capturedFile = new File([blob], `scan_${Date.now()}.jpg`, { type: 'image/jpeg' });
+        setFile(capturedFile);
+        stopCamera();
+        setResult('');
+      });
   };
 
   const exchangeRates = {
@@ -629,6 +670,28 @@ const App = () => {
       </AnimatePresence>
 
       <main className="flex-1 flex flex-col px-8 md:px-16 pt-2 pb-4 max-w-[1600px] mx-auto w-full relative overflow-hidden">
+        <AnimatePresence>
+          {isCameraActive && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center p-4">
+              <div className="relative w-full max-w-2xl aspect-[3/4] md:aspect-video bg-gray-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                <div className="absolute inset-0 border-[2px] border-white/20 m-12 rounded-xl pointer-events-none flex items-center justify-center">
+                  <p className="text-white/20 text-[8px] font-black uppercase tracking-[1em] rotate-90 md:rotate-0">Alinhar Documento</p>
+                </div>
+                <button onClick={stopCamera} className="absolute top-6 right-6 p-4 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-xl transition-all"><X /></button>
+              </div>
+              <div className="mt-12 flex items-center gap-10">
+                <button onClick={stopCamera} className="p-4 text-white/40 hover:text-white transition-colors"><X className="w-8 h-8" /></button>
+                <button onClick={capturePhoto} className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-2xl hover:scale-95 transition-all p-1">
+                  <div className="w-full h-full border-4 border-black rounded-full" />
+                </button>
+                <div className="w-8 h-8 opacity-0" />
+              </div>
+              <p className="mt-8 text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">Modo Scan Ativo</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <header className="mb-6 text-center md:text-left shrink-0">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 mb-2 justify-center md:justify-start">
             <div className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
@@ -641,10 +704,17 @@ const App = () => {
           </motion.h1>
           <p className="mt-3 text-muted font-medium text-xs md:text-sm max-w-2xl">A produtividade da sua empresa elevada por redes neuronais privadas. Transforme volumes massivos de dados em segundos.</p>
         </header>
+
         <div className="flex-1 grid lg:grid-cols-12 gap-6 min-h-0 mb-4">
           <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="lg:col-span-12 xl:col-span-5 flex flex-col gap-4 min-h-0">
-            <div {...getRootProps()} className={`glass flex-1 flex flex-col items-center justify-center p-8 transition-all duration-300 cursor-pointer ${isDragActive ? 'border-blue-500 border-2 shadow-2xl' : 'hover:border-main/20'}`}>
-              <input {...getInputProps()} /><div className="w-16 h-16 rounded-2xl bg-gray-500/5 flex items-center justify-center mb-6">{file ? <CheckCircle2 className="w-8 h-8 text-blue-500" /> : <Upload className="w-8 h-8 text-main/10" />}</div><h2 className="text-xl font-black text-main mb-1">{file ? file.name : 'Digitalização em Espera'}</h2><p className="text-muted text-[9px] font-black uppercase tracking-[0.4em]">Arraste para o Campo de Foco</p>
+            <div className="flex gap-4 shrink-0">
+              <div {...getRootProps()} className={`glass flex-1 flex flex-col items-center justify-center p-8 transition-all duration-300 cursor-pointer ${isDragActive ? 'border-blue-500 border-2 shadow-2xl' : 'hover:border-main/20'}`}>
+                <input {...getInputProps()} /><div className="w-16 h-16 rounded-2xl bg-gray-500/5 flex items-center justify-center mb-6">{file ? <CheckCircle2 className="w-8 h-8 text-blue-500" /> : <Upload className="w-8 h-8 text-main/10" />}</div><h2 className="text-xl font-black text-main mb-1">{file ? file.name : 'Digitalização em Espera'}</h2><p className="text-muted text-[9px] font-black uppercase tracking-[0.4em]">Arraste para o Campo de Foco</p>
+              </div>
+              <button onClick={startCamera} className="glass p-8 flex flex-col items-center justify-center gap-4 hover:bg-blue-500/5 hover:border-blue-500/30 transition-all border border-transparent">
+                <Camera className="w-8 h-8 text-blue-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted">SCAN</span>
+              </button>
             </div>
             <button onClick={handleProcess} disabled={!file || loading} className={`shrink-0 py-4 rounded-lg flex items-center justify-center gap-4 transition-all ${!file || loading ? 'bg-gray-500/10 text-muted cursor-not-allowed' : 'btn-tesla-blue shadow-2xl'}`}>
               {loading ? <><Loader2 className="animate-spin w-4 h-4" /> <span className="text-xs font-black">{progress}%</span></> : <><Zap className="w-4 h-4" /> <span className="text-[10px] font-black tracking-widest uppercase">EXECUTAR SCAN</span></>}
