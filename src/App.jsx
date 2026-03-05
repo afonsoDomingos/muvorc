@@ -394,10 +394,10 @@ const App = () => {
       <AnimatePresence>
         {activeOverlay && (
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed inset-0 z-[100] bg-color pt-24 px-8 md:px-20 overflow-y-auto custom-scrollbar transition-colors duration-700"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed inset-0 z-[100] ${theme === 'dark' ? 'bg-black/90' : 'bg-white/95'} backdrop-blur-3xl pt-24 px-8 md:px-20 overflow-y-auto custom-scrollbar transition-all duration-500`}
           >
             <div className="max-w-[1400px] mx-auto pb-20">
               <button
