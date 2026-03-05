@@ -1,6 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Upload, CheckCircle2, Loader2, Copy, Download, RefreshCcw, Search, Sun, Moon, AlertCircle, Sparkles } from 'lucide-react';
+import {
+  FileText, Upload, CheckCircle2, Loader2, Copy, Download,
+  RefreshCcw, Search, Sun, Moon, AlertCircle, Sparkles,
+  Shield, Zap, Globe, Menu, X, User, HelpCircle
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useDropzone } from 'react-dropzone';
 import { processImage, processPdf } from './services/OCRService';
@@ -13,6 +17,7 @@ const App = () => {
   const [result, setResult] = useState('');
   const [error, setError] = useState(null);
   const [theme, setTheme] = useState('dark');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -57,7 +62,6 @@ const App = () => {
 
       setResult(text);
 
-      // Enviar estatísticas para o Banco de Dados e Cloudinary (Cloud-Ready)
       try {
         const apiUrl = import.meta.env.MODE === 'development'
           ? 'http://localhost:5000/api/ocr/save'
@@ -79,17 +83,17 @@ const App = () => {
           imageBase64: imageBase64
         });
       } catch (saveErr) {
-        console.log('Modo Offline: Estatísticas não persistidas no servidor.');
+        console.log('Modo Offline: Estatísticas não persistidas.');
       }
 
       confetti({
         particleCount: 150,
         spread: 70,
         origin: { y: 0.6 },
-        colors: theme === 'dark' ? ['#ffffff', '#888888', '#000000'] : ['#000000', '#444444', '#888888']
+        colors: theme === 'dark' ? ['#ffffff', '#3d69e1', '#000000'] : ['#3d69e1', '#171a20', '#888888']
       });
     } catch (err) {
-      setError('Erro ao processar o documento. Verifique se o arquivo está nítido e tente novamente.');
+      setError('Erro catastrófico no motor neural. Tente novamente com uma imagem mais nítida.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -104,191 +108,220 @@ const App = () => {
     const element = document.createElement("a");
     const fileNode = new Blob([result], { type: 'text/plain' });
     element.href = URL.createObjectURL(fileNode);
-    element.download = `ocrmuv-resultado-${new Date().getTime()}.txt`;
+    element.download = `ocrmuv-${new Date().getTime()}.txt`;
     document.body.appendChild(element);
     element.click();
   };
 
-  const handleReset = () => {
-    setFile(null);
-    setResult('');
-    setProgress(0);
-    setError(null);
-  };
-
   return (
-    <div className="h-screen max-h-screen p-6 md:p-12 max-w-[1400px] mx-auto flex flex-col gap-8 overflow-hidden relative">
-      <div className="flex justify-between items-center w-full z-50">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-main rounded-xl flex items-center justify-center">
-            <Sparkles className="text-bg-color w-6 h-6" />
-          </div>
-          <h1 className="text-2xl font-black tracking-tighter text-main">OCR<span className="opacity-50">MUV</span></h1>
+    <div className="h-screen max-h-screen bg-color flex flex-col overflow-hidden transition-all duration-700">
+
+      {/* Top Navigation Bar - Tesla Style */}
+      <nav className="flex items-center justify-between px-8 py-4 z-50">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-6 h-6 text-main" />
+          <span className="font-black text-xl tracking-[-1.5px] text-main">OCRMUV</span>
         </div>
-        <button
-          onClick={toggleTheme}
-          className="p-3 rounded-full glass border-2 border-main hover:scale-110 transition-transform shadow-lg"
-          title={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
-        >
-          {theme === 'dark' ? <Sun className="w-5 h-5 text-main" /> : <Moon className="w-5 h-5 text-main" />}
-        </button>
-      </div>
 
-      <main className="flex-1 grid md:grid-cols-12 gap-8 min-h-0 pt-4">
-        {/* Sessão de Upload */}
-        <motion.section
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="md:col-span-12 lg:col-span-5 flex flex-col gap-6 min-h-0"
-        >
-          <div
-            {...getRootProps()}
-            className={`
-              glass rounded-[2.5rem] p-12 flex flex-col items-center justify-center border-4 border-dashed flex-1
-              transition-all duration-300 cursor-pointer group relative overflow-hidden
-              ${isDragActive ? 'border-main bg-main bg-opacity-5' : 'border-current border-opacity-20 hover:border-opacity-100 hover:bg-main hover:bg-opacity-5'}
-            `}
-          >
-            <input {...getInputProps()} />
+        {/* Desktop Menu */}
+        <div className="hidden lg:flex items-center gap-1">
+          {['Início', 'Tecnologia', 'Privacidade', 'Planos', 'Suporte'].map((item) => (
+            <a key={item} href="#" className="nav-link">{item}</a>
+          ))}
+        </div>
 
-            <AnimatePresence mode="wait">
-              {file ? (
-                <motion.div
-                  key="file-selected"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-center z-10"
-                >
-                  <div className="bg-main p-8 rounded-[2rem] mb-6 inline-block shadow-2xl">
-                    <CheckCircle2 className="w-16 h-16 text-bg-color" />
-                  </div>
-                  <h3 className="text-3xl font-black text-main mb-3 truncate max-w-[300px]">{file.name}</h3>
-                  <p className="text-main font-mono text-xs uppercase tracking-[0.3em] font-black">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB • PRONTO
-                  </p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="no-file"
-                  className="text-center z-10 flex flex-col items-center"
-                >
-                  <div className="bg-main bg-opacity-10 p-10 rounded-[3rem] mb-8 group-hover:bg-opacity-20 transition-all duration-500 border-2 border-main border-opacity-10 shadow-inner">
-                    <Upload className="w-20 h-20 text-main" />
-                  </div>
-                  <h3 className="text-4xl font-black text-main mb-4 tracking-tighter">ENVIAR ARQUIVO</h3>
-                  <p className="text-main text-sm font-bold uppercase tracking-[0.4em] opacity-60">
-                    PDF • IMAGENS • DOCUMENTOS
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+        <div className="flex items-center gap-4">
+          <button onClick={toggleTheme} className="p-2 hover:bg-gray-500/10 rounded-lg transition-all" title="Alternar Tema">
+            {theme === 'dark' ? <Sun className="w-5 h-5 text-main" /> : <Moon className="w-5 h-5 text-main" />}
+          </button>
+
+          <div className="hidden md:flex gap-2">
+            <button className="p-2 hover:bg-gray-500/10 rounded-lg transition-all"><HelpCircle className="w-5 h-5 text-main" /></button>
+            <button className="p-2 hover:bg-gray-500/10 rounded-lg transition-all"><Globe className="w-5 h-5 text-main" /></button>
+            <button className="p-2 hover:bg-gray-500/10 rounded-lg transition-all"><User className="w-5 h-5 text-main" /></button>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleProcess}
-            disabled={!file || loading}
-            className="w-full py-8 rounded-[2rem] font-black text-lg flex items-center justify-center gap-5 shrink-0 btn-premium uppercase tracking-[0.5em] shadow-2xl"
-          >
-            {loading ? (
-              <div className="flex items-center gap-5">
-                <Loader2 className="w-6 h-6 animate-spin" />
-                <span>PROCESSANDO {progress}%</span>
-              </div>
-            ) : (
-              <>
-                <Search className="w-7 h-7" />
-                <span className="glow-text">INICIAR SCAN</span>
-              </>
-            )}
-          </motion.button>
-        </motion.section>
+          <button className="p-2 lg:hidden" onClick={() => setIsMenuOpen(true)}>
+            <Menu className="w-6 h-6 text-main" />
+          </button>
+        </div>
+      </nav>
 
-        {/* Sessão de Resultado */}
-        <motion.section
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.1 }}
-          className="md:col-span-12 lg:col-span-7 glass rounded-[2.5rem] p-10 flex flex-col min-h-0 shadow-2xl border-2 border-main border-opacity-10"
-        >
-          <div className="flex items-center justify-between mb-8 shrink-0">
-            <h2 className="text-xs font-black flex items-center gap-6 text-main uppercase tracking-[0.8em]">
-              <div className="w-3 h-3 bg-main rounded-full shadow-[0_0_15px_var(--text-main)]" />
-              Painel de Extração
-            </h2>
-            <div className="flex gap-4">
-              {result && (
+      {/* Main Experience */}
+      <main className="flex-1 flex flex-col px-8 md:px-16 pt-2 pb-8 max-w-[1600px] mx-auto w-full min-h-0">
+        <header className="mb-8 text-center md:text-left">
+          <motion.h1
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl md:text-6xl font-black text-main tracking-tighter"
+          >
+            Poder Neural. <span className="text-secondary opacity-50">Privado por Desenho.</span>
+          </motion.h1>
+        </header>
+
+        <div className="flex-1 grid lg:grid-cols-12 gap-10 min-h-0">
+
+          {/* Card Esquerdo: Input */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="lg:col-span-12 xl:col-span-5 flex flex-col gap-6 min-h-0"
+          >
+            <div
+              {...getRootProps()}
+              className={`
+                glass flex-1 flex flex-col items-center justify-center p-12 transition-all duration-300 cursor-pointer
+                ${isDragActive ? 'border-blue-500 border-2' : ''}
+                hover:border-main/20
+              `}
+            >
+              <input {...getInputProps()} />
+              <div className="w-24 h-24 rounded-3xl bg-gray-500/5 flex items-center justify-center mb-8">
+                {file ? <CheckCircle2 className="w-12 h-12 text-blue-500" /> : <Upload className="w-12 h-12 text-main/10" />}
+              </div>
+              <h2 className="text-2xl font-black text-main mb-2">
+                {file ? file.name : 'Comece a Digitalizar'}
+              </h2>
+              <p className="text-muted text-sm font-medium uppercase tracking-widest text-center">
+                Solte o seu arquivo ou clique para selecionar
+              </p>
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={handleProcess}
+              disabled={!file || loading}
+              className={`
+                w-full py-5 rounded-lg flex items-center justify-center gap-4 transition-all
+                ${!file || loading ? 'bg-gray-500/10 text-muted cursor-not-allowed' : 'btn-tesla-blue shadow-xl'}
+              `}
+            >
+              {loading ? (
                 <>
-                  <motion.button whileHover={{ y: -3 }} onClick={handleCopy} className="p-4 bg-main bg-opacity-10 border-2 border-main border-opacity-20 rounded-2xl transition-all text-main" title="Copiar Texto">
-                    <Copy className="w-6 h-6" />
-                  </motion.button>
-                  <motion.button whileHover={{ y: -3 }} onClick={handleDownload} className="p-4 bg-main bg-opacity-10 border-2 border-main border-opacity-20 rounded-2xl transition-all text-main" title="Baixar TXT">
-                    <Download className="w-6 h-6" />
-                  </motion.button>
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <span className="font-bold tracking-widest">PROCESSANDO {progress}%</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-6 h-6" />
+                  <span className="font-bold tracking-widest">INICIAR DIGITALIZAÇÃO</span>
                 </>
               )}
-              {file && !loading && (
-                <motion.button whileHover={{ rotate: 90 }} onClick={handleReset} className="p-4 bg-red-500 bg-opacity-10 opacity-60 hover:opacity-100 border-2 border-red-500 border-opacity-20 rounded-2xl transition-all text-red-500" title="Reiniciar">
-                  <RefreshCcw className="w-6 h-6" />
-                </motion.button>
+            </motion.button>
+          </motion.div>
+
+          {/* Card Direito: Resultado */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="lg:col-span-12 xl:col-span-7 glass p-10 flex flex-col min-h-0"
+          >
+            <div className="flex justify-between items-center mb-6 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <h3 className="text-xs font-black uppercase tracking-[0.6em] text-main">Output Neural v2.0</h3>
+              </div>
+
+              <div className="flex gap-2">
+                {result && (
+                  <>
+                    <button onClick={handleCopy} className="p-3 bg-gray-500/5 hover:bg-gray-500/10 rounded-xl transition-all" title="Copiar"><Copy className="w-5 h-5" /></button>
+                    <button onClick={handleDownload} className="p-3 bg-gray-500/5 hover:bg-gray-500/10 rounded-xl transition-all" title="Download"><Download className="w-5 h-5" /></button>
+                  </>
+                )}
+                <button onClick={() => { setResult(''); setFile(null); }} className="p-3 bg-gray-500/5 hover:bg-gray-500/10 rounded-xl transition-all" title="Reiniciar"><RefreshCcw className="w-5 h-5" /></button>
+              </div>
+            </div>
+
+            <div className="flex-1 panel p-10 overflow-y-auto custom-scrollbar font-mono text-sm leading-relaxed text-main selection:bg-blue-500 selection:text-white">
+              {error ? (
+                <div className="h-full flex flex-col items-center justify-center text-center gap-4 text-red-500">
+                  <AlertCircle className="w-12 h-12" />
+                  <p className="font-bold max-w-sm">{error}</p>
+                </div>
+              ) : result ? (
+                <pre className="whitespace-pre-wrap">{result}</pre>
+              ) : loading ? (
+                <div className="h-full flex flex-col items-center justify-center gap-6">
+                  <div className="w-64 h-[2px] bg-gray-500/10 relative overflow-hidden rounded-full">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress}%` }}
+                      className="absolute inset-y-0 left-0 bg-blue-500"
+                    />
+                  </div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.5em] text-muted">A analisar pacotes de dados...</p>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center opacity-10 text-main select-none">
+                  <FileText className="w-24 h-24 mb-6" />
+                  <p className="text-xs font-black uppercase tracking-[0.8em]">Aguardando Entrada</p>
+                </div>
               )}
             </div>
-          </div>
-
-          <div className="flex-1 panel rounded-[2rem] p-10 overflow-y-auto font-mono text-base leading-relaxed text-main custom-scrollbar selection:bg-main selection:text-transparent border-2 border-main border-opacity-5">
-            {error ? (
-              <div className="h-full flex flex-col items-center justify-center font-mono text-xs uppercase tracking-widest text-center">
-                <div className="bg-red-500 bg-opacity-10 text-red-500 px-10 py-8 rounded-3xl border-2 border-red-500 border-opacity-20 flex flex-col items-center gap-6 shadow-2xl">
-                  <AlertCircle className="w-12 h-12" />
-                  <p className="max-w-[350px] leading-loose font-bold">{error}</p>
-                </div>
-              </div>
-            ) : result ? (
-              <pre className="whitespace-pre-wrap">{result}</pre>
-            ) : loading ? (
-              <div className="h-full flex flex-col items-center justify-center gap-12">
-                <div className="relative">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                    className="w-56 h-56 border-2 border-dashed border-main opacity-30 rounded-full"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-6xl font-black text-main tracking-tighter">{progress}%</span>
-                  </div>
-                  <motion.div
-                    animate={{ scale: [1, 1.4, 1], opacity: [0.2, 0, 0.2] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="absolute inset-0 border-2 border-main rounded-full"
-                  />
-                </div>
-                <p className="font-black uppercase tracking-[0.8em] text-[12px] text-main opacity-60 animate-pulse">Neural Engine Processando</p>
-              </div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center opacity-30 text-main text-center select-none">
-                <FileText className="w-32 h-32 mb-12 opacity-10" />
-                <p className="text-sm font-black uppercase tracking-[1em]">Standby</p>
-                <p className="text-[10px] uppercase tracking-[0.4em] mt-10">Neural Data Stream Waiting</p>
-              </div>
-            )}
-          </div>
-        </motion.section>
+          </motion.div>
+        </div>
       </main>
 
-      <footer className="shrink-0 pb-12 flex justify-between items-center opacity-60 border-t-2 border-main border-opacity-10 pt-10">
-        <p className="text-[12px] font-black uppercase tracking-[0.6em] text-main">
-          OCRMUV <span className="mx-8 text-main opacity-20">|</span> 0.2v HYPER-SCAN
-        </p>
-        <div className="flex gap-12">
-          <p className="text-[12px] font-black uppercase tracking-[0.6em] text-main border-b-2 border-main">
-            SECURE
-          </p>
-          <p className="text-[12px] font-black uppercase tracking-[0.6em] text-main border-b-2 border-main">
-            LOCAL
-          </p>
+      {/* Multi-column Footer - Tesla Inspired */}
+      <footer className="shrink-0 px-8 py-10 border-t border-gray-500/10 max-w-[1600px] mx-auto w-full">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10">
+          <div className="col-span-2">
+            <h4 className="font-black text-lg mb-4 text-main tracking-tighter">OCRMUV</h4>
+            <p className="text-muted text-xs max-w-xs leading-relaxed">
+              Elevando a inteligência documental a um novo patamar tecnológico. Totalmente local, ultra-privado e desenhado para o futuro.
+            </p>
+          </div>
+          <div className="flex flex-col gap-4 text-[11px] font-bold uppercase tracking-widest text-secondary">
+            <span className="text-main mb-2">Produto</span>
+            <a href="#" className="hover:text-blue-500 transition-colors">Visão Geral</a>
+            <a href="#" className="hover:text-blue-500 transition-colors">Tecnologia</a>
+            <a href="#" className="hover:text-blue-500 transition-colors">Segurança</a>
+          </div>
+          <div className="flex flex-col gap-4 text-[11px] font-bold uppercase tracking-widest text-secondary">
+            <span className="text-main mb-2">Empresa</span>
+            <a href="#" className="hover:text-blue-500 transition-colors">Sobre Nós</a>
+            <a href="#" className="hover:text-blue-500 transition-colors">Carreiras</a>
+            <a href="#" className="hover:text-blue-500 transition-colors">Investidores</a>
+          </div>
+          <div className="flex flex-col gap-4 text-[11px] font-bold uppercase tracking-widest text-secondary">
+            <span className="text-main mb-2">Legal</span>
+            <a href="#" className="hover:text-blue-500 transition-colors">Privacidade</a>
+            <a href="#" className="hover:text-blue-500 transition-colors">Termos</a>
+            <a href="#" className="hover:text-blue-500 transition-colors">Contactos</a>
+          </div>
+        </div>
+        <div className="mt-12 flex flex-col md:flex-row justify-between items-center gap-6 text-[10px] font-bold text-muted uppercase tracking-widest">
+          <p>© 2024 OCRMUV Inc. <span className="mx-4 text-gray-500/20">|</span> Todos os Direitos Reservados</p>
+          <div className="flex items-center gap-8">
+            <span className="flex items-center gap-2"><Shield className="w-3 h-3" /> Camada Segura</span>
+            <span className="flex items-center gap-2"><Globe className="w-3 h-3" /> Rede Local</span>
+          </div>
         </div>
       </footer>
+
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, x: '100%' }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: '100%' }}
+            className="fixed inset-0 bg-color z-[100] p-8 flex flex-col"
+          >
+            <div className="flex justify-end p-4">
+              <button onClick={() => setIsMenuOpen(false)}><X className="w-8 h-8 text-main" /></button>
+            </div>
+            <div className="flex flex-col gap-10 mt-12 text-center">
+              {['Início', 'Tecnologia', 'Privacidade', 'Planos', 'Suporte'].map((item) => (
+                <a key={item} href="#" className="text-3xl font-black text-main tracking-tighter" onClick={() => setIsMenuOpen(false)}>{item}</a>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
