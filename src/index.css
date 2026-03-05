@@ -61,10 +61,10 @@ pre,
 body {
   margin: 0;
   min-width: 320px;
-  height: 100vh;
+  min-height: 100vh;
   background-color: var(--bg-color);
   color: var(--text-main);
-  overflow: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
