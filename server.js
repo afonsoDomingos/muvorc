@@ -31,6 +31,7 @@ const UserSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     name: String,
+    companyName: String,
     role: { type: String, default: 'user' }, // user, admin
     subscription: { type: String, default: 'LOCAL' }, // LOCAL, HYPER, NEURAL
     createdAt: { type: Date, default: Date.now }
@@ -42,28 +43,50 @@ const OCRSchema = new mongoose.Schema({
     fileSize: Number,
     extractedText: String,
     imageUrl: String,
+    folder: { type: String, default: 'Geral' },
     createdAt: { type: Date, default: Date.now },
 });
 
 const User = mongoose.model('User', UserSchema);
 const OCR = mongoose.model('OCR', OCRSchema);
 
+const PaymentSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    planName: String,
+    amount: String,
+    currency: String,
+    proofUrl: String,
+    status: { type: String, default: 'pending' }, // pending, approved, rejected
+    createdAt: { type: Date, default: Date.now },
+});
+
+const Payment = mongoose.model('Payment', PaymentSchema);
+
 // Admin Seed function
 const seedAdmin = async () => {
     try {
         const adminEmail = 'admin@orcmuv.com';
+        const hashedPassword = await bcrypt.hash('@Admin123@', 10);
         const existingAdmin = await User.findOne({ email: adminEmail });
+
         if (!existingAdmin) {
-            const hashedPassword = await bcrypt.hash('@Admin123@', 10);
             const admin = new User({
                 email: adminEmail,
                 password: hashedPassword,
-                name: 'Sistema Admin',
+                name: 'Diretor de Sistemas',
+                companyName: 'OCRMUV Tech',
                 role: 'admin',
-                subscription: 'NEURAL'
+                subscription: 'GLOBAL NEURAL'
             });
             await admin.save();
             console.log('👑 Admin Base Criado: admin@orcmuv.com');
+        } else {
+            existingAdmin.password = hashedPassword;
+            existingAdmin.companyName = 'OCRMUV Tech';
+            existingAdmin.role = 'admin';
+            existingAdmin.subscription = 'GLOBAL NEURAL';
+            await existingAdmin.save();
+            console.log('👑 Admin Base Resetado: admin@orcmuv.com');
         }
     } catch (err) {
         console.error('Erro ao criar admin:', err);
@@ -97,9 +120,9 @@ const isAdmin = async (req, res, next) => {
 // Auth Routes
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { email, password, name } = req.body;
+        const { email, password, name, companyName } = req.body;
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ email, password: hashedPassword, name });
+        const newUser = new User({ email: email.toLowerCase(), password: hashedPassword, name, companyName });
         await newUser.save();
         res.status(201).json({ message: 'Conta criada com sucesso!' });
     } catch (error) {
@@ -110,12 +133,12 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: email.toLowerCase() });
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ error: 'Credenciais inválidas' });
         }
         const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ token, user: { email: user.email, name: user.name, subscription: user.subscription, role: user.role } });
+        res.json({ token, user: { email: user.email, name: user.name, companyName: user.companyName, subscription: user.subscription, role: user.role } });
     } catch (error) {
         res.status(500).json({ error: 'Erro no servidor' });
     }
@@ -135,45 +158,66 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
     try {
         const totalUsers = await User.countDocuments();
         const totalOCR = await OCR.countDocuments();
+        const pendingPayments = await Payment.countDocuments({ status: 'pending' });
         const recentOCR = await OCR.find().sort({ createdAt: -1 }).limit(5).populate('userId', 'email name');
-        res.json({ totalUsers, totalOCR, recentOCR });
+        res.json({ totalUsers, totalOCR, pendingPayments, recentOCR });
     } catch (error) {
         res.status(500).json({ error: 'Erro ao carregar estatísticas' });
     }
 });
 
-app.get('/api/admin/users', authenticate, isAdmin, async (req, res) => {
+app.get('/api/admin/payments', authenticate, isAdmin, async (req, res) => {
     try {
-        const users = await User.find().select('-password').sort({ createdAt: -1 });
-        res.json(users);
+        const payments = await Payment.find().populate('userId', 'email name').sort({ createdAt: -1 });
+        res.json(payments);
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao carregar utilizadores' });
+        res.status(500).json({ error: 'Erro ao carregar pagamentos' });
     }
 });
 
-app.get('/api/admin/all-ocr', authenticate, isAdmin, async (req, res) => {
+app.patch('/api/admin/payment/:id', authenticate, isAdmin, async (req, res) => {
     try {
-        const ocr = await OCR.find().sort({ createdAt: -1 }).populate('userId', 'email');
-        res.json(ocr);
+        const { status, subscription } = req.body;
+        const payment = await Payment.findByIdAndUpdate(req.params.id, { status }, { new: true });
+
+        if (status === 'approved' && subscription) {
+            await User.findByIdAndUpdate(payment.userId, { subscription });
+        }
+
+        res.json({ message: 'Estado do pagamento atualizado', data: payment });
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao carregar dados OCR' });
+        res.status(500).json({ error: 'Erro ao atualizar pagamento' });
     }
 });
 
-app.delete('/api/admin/user/:id', authenticate, isAdmin, async (req, res) => {
+// User Payments
+app.post('/api/payments/upload', authenticate, async (req, res) => {
     try {
-        await User.findByIdAndDelete(req.params.id);
-        await OCR.deleteMany({ userId: req.params.id });
-        res.json({ message: 'Utilizador e dados removidos' });
+        const { planName, amount, currency, imageBase64 } = req.body;
+
+        const uploadRes = await cloudinary.uploader.upload(imageBase64, {
+            folder: 'ocrmuv_payments',
+        });
+
+        const newPayment = new Payment({
+            userId: req.userId,
+            planName,
+            amount,
+            currency,
+            proofUrl: uploadRes.secure_url
+        });
+
+        await newPayment.save();
+        res.status(201).json({ message: 'Comprovativo enviado com sucesso!' });
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao remover utilizador' });
+        res.status(500).json({ error: 'Erro ao enviar comprovativo' });
     }
 });
 
 // OCR Routes
 app.post('/api/ocr/save', async (req, res) => {
     try {
-        const { fileName, fileSize, extractedText, imageBase64, token } = req.body;
+        const { fileName, fileSize, extractedText, imageBase64, token, folder } = req.body;
         let userId = null;
 
         if (token) {
@@ -195,6 +239,7 @@ app.post('/api/ocr/save', async (req, res) => {
             fileSize,
             extractedText,
             imageUrl,
+            folder: folder || 'Geral'
         });
 
         await newOCR.save();

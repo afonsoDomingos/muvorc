@@ -43,6 +43,7 @@ const OCRSchema = new mongoose.Schema({
     fileSize: Number,
     extractedText: String,
     imageUrl: String,
+    folder: { type: String, default: 'Geral' },
     createdAt: { type: Date, default: Date.now },
 });
 
@@ -216,7 +217,7 @@ app.post('/api/payments/upload', authenticate, async (req, res) => {
 // OCR Routes
 app.post('/api/ocr/save', async (req, res) => {
     try {
-        const { fileName, fileSize, extractedText, imageBase64, token } = req.body;
+        const { fileName, fileSize, extractedText, imageBase64, token, folder } = req.body;
         let userId = null;
 
         if (token) {
@@ -238,6 +239,7 @@ app.post('/api/ocr/save', async (req, res) => {
             fileSize,
             extractedText,
             imageUrl,
+            folder: folder || 'Geral'
         });
 
         await newOCR.save();
