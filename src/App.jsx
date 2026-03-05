@@ -293,25 +293,62 @@ const App = () => {
     </div>
   );
 
+  // Currency State
+  const [currency, setCurrency] = useState('USD'); // 'USD' | 'EUR' | 'MZN'
+
+  const exchangeRates = {
+    USD: { symbol: '$', rate: 1, suffix: '' },
+    EUR: { symbol: '€', rate: 0.92, suffix: '' },
+    MZN: { symbol: '', rate: 63.8, suffix: ' MT' }
+  };
+
+  const formatPrice = (usdPrice) => {
+    const { symbol, rate, suffix } = exchangeRates[currency];
+    const converted = usdPrice * rate;
+
+    if (usdPrice === 0) return currency === 'MZN' ? `0 MT` : `${symbol}0`;
+
+    const formatted = new Intl.NumberFormat('pt-PT', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(converted);
+
+    return `${symbol}${formatted}${suffix}`;
+  };
+
   const PricingOverlay = () => (
     <div className="flex flex-col items-center">
-      <h2 className="text-4xl font-black mb-12 tracking-tighter">Escolha o seu Futuro.</h2>
+      <h2 className="text-4xl font-black mb-6 tracking-tighter">Escolha o seu Futuro.</h2>
+
+      {/* Currency Switcher */}
+      <div className="flex glass p-1 gap-1 mb-12 rounded-full overflow-hidden">
+        {['USD', 'EUR', 'MZN'].map((c) => (
+          <button
+            key={c}
+            onClick={() => setCurrency(c)}
+            className={`px-6 py-2 text-[10px] font-black tracking-widest transition-all rounded-full ${currency === c ? 'bg-blue-500 text-white' : 'hover:bg-main/5 text-muted'}`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
       <div className="grid md:grid-cols-3 gap-8 w-full">
         {[
-          { name: 'LOCAL', price: '$0', sub: '0 MT', features: ['5 Scans por dia', 'Processamento Local', 'Exportar TXT'], btn: 'Plano Grátis' },
-          { name: 'HYPER', price: '$19', sub: '1.200 MT', features: ['Scans Ilimitados', 'Sincronização Cloud', 'Motor Prioritário', 'Suporte 24h'], active: true, btn: 'Subscrever' },
-          { name: 'NEURAL', price: '$49', sub: '3.100 MT', features: ['Acesso via API', 'Múltiplos Utilizadores', 'Segurança Bancária', 'Painel Admin'], btn: 'Contactar Equipa' }
+          { name: 'LOCAL', usd: 0, features: ['5 Scans por dia', 'Processamento Local', 'Exportar TXT'], btn: 'Plano Grátis' },
+          { name: 'HYPER', usd: 19, features: ['Scans Ilimitados', 'Sincronização Cloud', 'Motor Prioritário', 'Suporte 24h'], active: true, btn: 'Subscrever' },
+          { name: 'NEURAL', usd: 49, features: ['Acesso via API', 'Múltiplos Utilizadores', 'Segurança Bancária', 'Painel Admin'], btn: 'Contactar Equipa' }
         ].map((plan) => (
-          <div key={plan.name} className={`glass p-10 flex flex-col gap-6 relative ${plan.active ? 'border-blue-500 border-2' : ''}`}>
+          <div key={plan.name} className={`glass p-10 flex flex-col gap-6 relative ${plan.active ? 'border-blue-500 border-2 shadow-[0_0_30px_rgba(61,105,225,0.1)]' : ''}`}>
             <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">{plan.name}</span>
             <div>
-              <h3 className="text-5xl font-black text-main">{plan.price}<span className="text-sm opacity-30 font-bold">/mês</span></h3>
-              <p className="text-sm font-bold text-blue-500 mt-1">{plan.sub}</p>
+              <h3 className="text-5xl font-black text-main">{formatPrice(plan.usd)}<span className="text-sm opacity-30 font-bold">/mês</span></h3>
+              <p className="text-[10px] font-bold text-muted mt-2 uppercase tracking-widest">Cobrado anualmente</p>
             </div>
             <ul className="flex flex-col gap-4 flex-1">
               {plan.features.map(f => <li key={f} className="text-xs font-bold text-secondary flex items-center gap-2"><ArrowRight className="w-3 h-3 text-blue-500" /> {f}</li>)}
             </ul>
-            <button className={`w-full py-4 font-black tracking-widest text-[10px] uppercase rounded ${plan.active ? 'btn-tesla-blue' : 'panel hover:bg-main/5'}`}>{plan.btn}</button>
+            <button className={`w-full py-4 font-black tracking-widest text-[10px] uppercase rounded ${plan.active ? 'btn-tesla-blue shadow-lg' : 'panel hover:bg-main/5'}`}>{plan.btn}</button>
           </div>
         ))}
       </div>
