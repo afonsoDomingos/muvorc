@@ -65,18 +65,27 @@ const Payment = mongoose.model('Payment', PaymentSchema);
 const seedAdmin = async () => {
     try {
         const adminEmail = 'admin@orcmuv.com';
+        const hashedPassword = await bcrypt.hash('@Admin123@', 10);
         const existingAdmin = await User.findOne({ email: adminEmail });
+
         if (!existingAdmin) {
-            const hashedPassword = await bcrypt.hash('@Admin123@', 10);
             const admin = new User({
                 email: adminEmail,
                 password: hashedPassword,
-                name: 'Sistema Admin',
+                name: 'Diretor de Sistemas',
+                companyName: 'OCRMUV Tech',
                 role: 'admin',
-                subscription: 'NEURAL'
+                subscription: 'GLOBAL NEURAL'
             });
             await admin.save();
             console.log('👑 Admin Base Criado: admin@orcmuv.com');
+        } else {
+            existingAdmin.password = hashedPassword;
+            existingAdmin.companyName = 'OCRMUV Tech';
+            existingAdmin.role = 'admin';
+            existingAdmin.subscription = 'GLOBAL NEURAL';
+            await existingAdmin.save();
+            console.log('👑 Admin Base Resetado: admin@orcmuv.com');
         }
     } catch (err) {
         console.error('Erro ao criar admin:', err);
@@ -112,7 +121,7 @@ app.post('/api/auth/register', async (req, res) => {
     try {
         const { email, password, name, companyName } = req.body;
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ email, password: hashedPassword, name, companyName });
+        const newUser = new User({ email: email.toLowerCase(), password: hashedPassword, name, companyName });
         await newUser.save();
         res.status(201).json({ message: 'Conta criada com sucesso!' });
     } catch (error) {
@@ -123,7 +132,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: email.toLowerCase() });
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ error: 'Credenciais inválidas' });
         }
