@@ -489,9 +489,9 @@ const App = () => {
                       </div>
                       <div className="grid md:grid-cols-3 gap-8 w-full">
                         {[
-                          { name: 'LOCAL', usd: 0, features: ['5 Scans por dia', 'Processamento Local', 'Exportar TXT'], btn: 'Plano Grátis' },
-                          { name: 'HYPER', usd: 19, features: ['Scans Ilimitados', 'Sincronização Cloud', 'Motor Prioritário', 'Suporte 24h'], active: true, btn: 'Subscrever' },
-                          { name: 'NEURAL', usd: 49, features: ['Acesso via API', 'Múltiplos Utilizadores', 'Segurança Bancária', 'Painel Admin'], btn: 'Contactar Equipa' }
+                          { name: 'BUSINESS', usd: 0, features: ['5 Scans / Colaborador', 'Gestão de Arquivos', 'Exportação Padrão'], btn: 'Começar Grátis' },
+                          { name: 'ENTERPRISE HYPER', usd: 19, features: ['Volume Ilimitado', 'Sincronização Multi-Sede', 'Segurança AES-256', 'Suporte Prioritário'], active: true, btn: 'Adquirir Licença' },
+                          { name: 'GLOBAL NEURAL', usd: 49, features: ['Acesso via API Enterprise', 'Usuários Ilimitados', 'SLA de 99.9%', 'Painel Admin Avançado'], btn: 'Contactar Equipa' }
                         ].map(plan => (
                           <div key={plan.name} className={`glass p-10 flex flex-col gap-6 relative ${plan.active ? 'border-blue-500 border-2 shadow-2xl' : ''}`}>
                             <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40 text-main">{plan.name}</span>
@@ -536,10 +536,17 @@ const App = () => {
       </AnimatePresence>
 
       <main className="flex-1 flex flex-col px-8 md:px-16 pt-2 pb-8 max-w-[1600px] mx-auto w-full relative">
-        <header className="mb-8 text-center md:text-left">
-          <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-6xl font-black text-main tracking-tighter">
-            Poder Neural. <span className="text-secondary opacity-50">Privado por Desenho.</span>
+        <header className="mb-10 text-center md:text-left">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 mb-4 justify-center md:justify-start">
+            <div className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
+              <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">Corporate Edition 2024</p>
+            </div>
+          </motion.div>
+          <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-7xl font-black text-main tracking-tighter leading-[0.9]">
+            Inteligência Documental <br />
+            <span className="text-secondary opacity-50 italic">para o Sector Corporativo.</span>
           </motion.h1>
+          <p className="mt-6 text-muted font-medium text-sm md:text-base max-w-2xl">A produtividade da sua empresa elevada por redes neuronais privadas. Transforme volumes massivos de dados em ativos digitais em segundos.</p>
         </header>
         <div className="flex-1 grid lg:grid-cols-12 gap-10">
           <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="lg:col-span-12 xl:col-span-5 flex flex-col gap-6">
