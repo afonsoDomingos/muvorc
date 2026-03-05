@@ -31,6 +31,7 @@ const UserSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     name: String,
+    role: { type: String, default: 'user' }, // user, admin
     subscription: { type: String, default: 'LOCAL' }, // LOCAL, HYPER, NEURAL
     createdAt: { type: Date, default: Date.now }
 });
@@ -47,6 +48,29 @@ const OCRSchema = new mongoose.Schema({
 const User = mongoose.model('User', UserSchema);
 const OCR = mongoose.model('OCR', OCRSchema);
 
+// Admin Seed function
+const seedAdmin = async () => {
+    try {
+        const adminEmail = 'admin@orcmuv.com';
+        const existingAdmin = await User.findOne({ email: adminEmail });
+        if (!existingAdmin) {
+            const hashedPassword = await bcrypt.hash('@Admin123@', 10);
+            const admin = new User({
+                email: adminEmail,
+                password: hashedPassword,
+                name: 'Sistema Admin',
+                role: 'admin',
+                subscription: 'NEURAL'
+            });
+            await admin.save();
+            console.log('👑 Admin Base Criado: admin@orcmuv.com');
+        }
+    } catch (err) {
+        console.error('Erro ao criar admin:', err);
+    }
+};
+seedAdmin();
+
 // Middleware
 const authenticate = (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
@@ -58,6 +82,15 @@ const authenticate = (req, res, next) => {
         next();
     } catch (err) {
         res.status(401).json({ error: 'Token inválido' });
+    }
+};
+
+const isAdmin = async (req, res, next) => {
+    const user = await User.findById(req.userId);
+    if (user?.role === 'admin') {
+        next();
+    } else {
+        res.status(403).json({ error: 'Acesso negado: Requer privilégios de admin' });
     }
 };
 
@@ -82,7 +115,7 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ error: 'Credenciais inválidas' });
         }
         const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ token, user: { email: user.email, name: user.name, subscription: user.subscription } });
+        res.json({ token, user: { email: user.email, name: user.name, subscription: user.subscription, role: user.role } });
     } catch (error) {
         res.status(500).json({ error: 'Erro no servidor' });
     }
@@ -94,6 +127,46 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
         res.json(user);
     } catch (error) {
         res.status(500).json({ error: 'Erro ao carregar perfil' });
+    }
+});
+
+// Admin Routes
+app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
+    try {
+        const totalUsers = await User.countDocuments();
+        const totalOCR = await OCR.countDocuments();
+        const recentOCR = await OCR.find().sort({ createdAt: -1 }).limit(5).populate('userId', 'email name');
+        res.json({ totalUsers, totalOCR, recentOCR });
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao carregar estatísticas' });
+    }
+});
+
+app.get('/api/admin/users', authenticate, isAdmin, async (req, res) => {
+    try {
+        const users = await User.find().select('-password').sort({ createdAt: -1 });
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao carregar utilizadores' });
+    }
+});
+
+app.get('/api/admin/all-ocr', authenticate, isAdmin, async (req, res) => {
+    try {
+        const ocr = await OCR.find().sort({ createdAt: -1 }).populate('userId', 'email');
+        res.json(ocr);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao carregar dados OCR' });
+    }
+});
+
+app.delete('/api/admin/user/:id', authenticate, isAdmin, async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.params.id);
+        await OCR.deleteMany({ userId: req.params.id });
+        res.json({ message: 'Utilizador e dados removidos' });
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao remover utilizador' });
     }
 });
 
