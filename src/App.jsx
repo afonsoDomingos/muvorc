@@ -692,17 +692,11 @@ const App = () => {
           )}
         </AnimatePresence>
 
-        <header className="mb-6 text-center md:text-left shrink-0">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 mb-2 justify-center md:justify-start">
-            <div className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
-              <p className="text-[9px] font-black text-blue-500 uppercase tracking-[0.3em]">Corporate Edition 2024</p>
-            </div>
-          </motion.div>
-          <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-6xl font-black text-main tracking-tighter leading-[0.85]">
-            Inteligência Documental <br />
-            <span className="text-secondary opacity-50 italic">para o Sector Corporativo.</span>
+        <header className="mb-8 text-center md:text-left shrink-0">
+          <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-3xl md:text-5xl font-black text-main tracking-tighter leading-tight">
+            Inteligência Documental <span className="text-secondary opacity-50 italic">Corporativa.</span>
           </motion.h1>
-          <p className="mt-3 text-muted font-medium text-xs md:text-sm max-w-2xl">A produtividade da sua empresa elevada por redes neuronais privadas. Transforme volumes massivos de dados em segundos.</p>
+          <p className="mt-3 text-muted font-medium text-xs md:text-sm max-w-2xl">A produtividade da sua empresa elevada por redes neuronais privadas.</p>
         </header>
 
         <div className="flex-1 grid lg:grid-cols-12 gap-6 min-h-0 mb-4">
