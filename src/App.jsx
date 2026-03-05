@@ -343,6 +343,50 @@ const App = () => {
     </div>
   );
 
+  const AuthOverlay = () => (
+    <div className="flex flex-col items-center justify-center min-h-[60vh]">
+      <div className="glass p-12 max-w-md w-full flex flex-col gap-8 border-main/10 border">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-blue-500"><Shield className="w-8 h-8" /></div>
+          <h2 className="text-3xl font-black text-main tracking-tighter">{authMode === 'login' ? 'Acesso Corporativo' : 'Nova Conta Industrial'}</h2>
+          <p className="text-[10px] font-bold text-muted uppercase tracking-[0.2em] mt-2">{authMode === 'login' ? 'Introduza as suas credenciais' : 'Registe a sua empresa no ecossistema'}</p>
+        </div>
+
+        <form onSubmit={handleAuth} className="flex flex-col gap-5">
+          {authMode === 'register' && (
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1">Nome Completo</label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                <input required type="text" placeholder="Ex: João Silva" className="panel w-full py-4 pl-12 pr-4 text-xs font-bold" value={authData.name} onChange={e => setAuthData({ ...authData, name: e.target.value })} />
+              </div>
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1">Email Profissional</label>
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+              <input required type="email" placeholder="nome@empresa.com" className="panel w-full py-4 pl-12 pr-4 text-xs font-bold" value={authData.email} onChange={e => setAuthData({ ...authData, email: e.target.value })} />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1">Chave de Segurança</label>
+            <div className="relative">
+              <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+              <input required type="password" placeholder="••••••••" className="panel w-full py-4 pl-12 pr-4 text-xs font-bold" value={authData.password} onChange={e => setAuthData({ ...authData, password: e.target.value })} />
+            </div>
+          </div>
+          {error && <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-lg flex items-center gap-3 text-red-500 text-[10px] font-bold uppercase"><AlertCircle className="w-4 h-4" /> {error}</div>}
+          <button type="submit" className="btn-tesla-blue py-5 mt-4 text-[10px] font-black uppercase tracking-[0.3em] shadow-xl">{authMode === 'login' ? 'ENTRAR NO SISTEMA' : 'CRIAR ACESSO'}</button>
+        </form>
+
+        <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="text-[10px] font-black text-muted uppercase tracking-widest hover:text-blue-500 transition-colors">
+          {authMode === 'login' ? 'Não tem conta? Solicitar Registo' : 'Já possui acesso? Iniciar Sessão'}
+        </button>
+      </div>
+    </div>
+  );
+
   const DashboardOverlay = () => (
     <div className="flex flex-col gap-12">
       <div className="flex justify-between items-end border-b border-gray-500/10 pb-10">
@@ -371,7 +415,7 @@ const App = () => {
             <h3 className="text-3xl font-black text-main">{user?.subscription}</h3>
             <div className="w-full h-1 bg-gray-500/10 rounded-full overflow-hidden"><div className="h-full bg-blue-500 w-1/4" /></div>
             <p className="text-[10px] font-bold text-muted uppercase">25% do limite diário utilizado</p>
-            <button onClick={() => setActiveOverlay('precos')} className="btn-tesla-blue py-4 mt-2 text-[10px] font-black uppercase">Fazer Upgrade</button>
+            <button onClick={() => setActiveOverlay('planos')} className="btn-tesla-blue py-4 mt-2 text-[10px] font-black uppercase">Fazer Upgrade</button>
           </div>
         </div>
         <div className="lg:col-span-8 flex flex-col gap-6">
@@ -440,7 +484,7 @@ const App = () => {
               >
                 <X className="w-4 h-4" /> {activeOverlay === 'admin' ? 'Voltar ao Dashboard' : 'Fechar Secção'}
               </button>
-              {activeOverlay === 'precos' && (
+              {activeOverlay === 'planos' && (
                 <div className="flex flex-col items-center">
                   <h2 className="text-4xl font-black mb-6 tracking-tighter text-main">Escolha o seu Futuro.</h2>
 
