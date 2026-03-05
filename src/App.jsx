@@ -5,7 +5,7 @@ import {
   RefreshCcw, Search, Sun, Moon, AlertCircle, Sparkles,
   Shield, Zap, Globe, Menu, X, User, HelpCircle, ArrowRight,
   Cpu, Lock, Database, Headphones, Mail, Key, LogOut, Trash2,
-  BarChart3, Users, Settings, Activity, Camera
+  BarChart3, Users, Settings, Activity, Camera, Building2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useDropzone } from 'react-dropzone';
@@ -26,7 +26,7 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('ocrmuv_token'));
   const [authMode, setAuthMode] = useState('login');
-  const [authData, setAuthData] = useState({ email: '', password: '', name: '' });
+  const [authData, setAuthData] = useState({ email: '', password: '', name: '', companyName: '' });
   const [userHistory, setUserHistory] = useState([]);
   const [currency, setCurrency] = useState('USD');
 
@@ -395,13 +395,22 @@ const App = () => {
 
         <form onSubmit={handleAuth} className="flex flex-col gap-5">
           {authMode === 'register' && (
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1">Nome Completo</label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                <input required type="text" placeholder="Ex: João Silva" className="panel w-full py-4 pl-12 pr-4 text-xs font-bold" value={authData.name} onChange={e => setAuthData({ ...authData, name: e.target.value })} />
+            <>
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1">Nome da Empresa</label>
+                <div className="relative">
+                  <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                  <input required type="text" placeholder="Ex: MUV Digital Lda" className="panel w-full py-4 pl-12 pr-4 text-xs font-bold" value={authData.companyName} onChange={e => setAuthData({ ...authData, companyName: e.target.value })} />
+                </div>
               </div>
-            </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1">Representante Legal</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                  <input required type="text" placeholder="Ex: João Silva" className="panel w-full py-4 pl-12 pr-4 text-xs font-bold" value={authData.name} onChange={e => setAuthData({ ...authData, name: e.target.value })} />
+                </div>
+              </div>
+            </>
           )}
           <div className="flex flex-col gap-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1">Email Profissional</label>
@@ -433,7 +442,11 @@ const App = () => {
       <div className="flex justify-between items-end border-b border-gray-500/10 pb-10">
         <div>
           <h2 className="text-5xl font-black tracking-tighter mb-2">Painel de Controlo.</h2>
-          <p className="text-muted text-sm font-bold">Olá, {user?.name || 'Utilizador'}. Estás no plano <span className="text-blue-500">{user?.subscription}</span>.</p>
+          <p className="text-muted text-sm font-bold">
+            Olá, {user?.name || 'Utilizador'}.
+            {user?.companyName && <span className="opacity-50"> de {user.companyName}</span>}.
+            Estás no plano <span className="text-blue-500">{user?.subscription}</span>.
+          </p>
         </div>
         <div className="flex gap-4">
           {user?.role === 'admin' && (
@@ -489,8 +502,8 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-color flex flex-col transition-all duration-700 font-sans">
-      <nav className="flex items-center justify-between px-8 py-4 z-[110] bg-color">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveOverlay(null)}><Sparkles className="w-6 h-6 text-main" /><span className="font-black text-xl tracking-[-1.5px] text-main">OCRMUV</span></div>
+      <nav className="flex items-center justify-between px-8 py-4 z-[110] bg-color text-main">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveOverlay(null)}><span className="font-black text-xl tracking-[-1.5px] text-main">OCRMUV</span></div>
         <div className="hidden lg:flex items-center gap-1">
           {[
             { label: 'Início', key: null },

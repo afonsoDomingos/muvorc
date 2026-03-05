@@ -31,6 +31,7 @@ const UserSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     name: String,
+    companyName: String,
     role: { type: String, default: 'user' }, // user, admin
     subscription: { type: String, default: 'LOCAL' }, // LOCAL, HYPER, NEURAL
     createdAt: { type: Date, default: Date.now }
@@ -109,9 +110,9 @@ const isAdmin = async (req, res, next) => {
 // Auth Routes
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { email, password, name } = req.body;
+        const { email, password, name, companyName } = req.body;
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ email, password: hashedPassword, name });
+        const newUser = new User({ email, password: hashedPassword, name, companyName });
         await newUser.save();
         res.status(201).json({ message: 'Conta criada com sucesso!' });
     } catch (error) {
@@ -127,7 +128,7 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ error: 'Credenciais inválidas' });
         }
         const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ token, user: { email: user.email, name: user.name, subscription: user.subscription, role: user.role } });
+        res.json({ token, user: { email: user.email, name: user.name, companyName: user.companyName, subscription: user.subscription, role: user.role } });
     } catch (error) {
         res.status(500).json({ error: 'Erro no servidor' });
     }
