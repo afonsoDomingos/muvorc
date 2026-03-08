@@ -484,8 +484,12 @@ const App = () => {
 
           {user ? (
             <button onClick={() => setActiveOverlay('dashboard')} className="flex items-center gap-4 group">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center text-xs font-black text-white shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
-                {user.name?.[0] || 'U'}
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center text-xs font-black text-white shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform overflow-hidden border border-blue-500/30">
+                {user.companyLogo ? (
+                  <img src={user.companyLogo} className="w-full h-full object-cover" alt="User Logo" />
+                ) : (
+                  user.name?.[0] || 'U'
+                )}
               </div>
               <div className="hidden md:flex flex-col items-start">
                 <span className="text-[10px] font-black uppercase tracking-widest text-white">{user.name?.split(' ')[0]}</span>
@@ -1520,7 +1524,9 @@ const DashboardOverlay = ({ user, userHistory, deleteRecord, setResult, setActiv
                   <tbody className="divide-y divide-main/5">
                     <tr className="text-[11px] font-bold text-main hover:bg-main/5 transition-colors">
                       <td className="px-8 py-4 flex items-center gap-4">
-                        <div className="w-7 h-7 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 text-[10px]">{user?.name?.[0]}</div>
+                        <div className="w-7 h-7 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 text-[10px] overflow-hidden">
+                          {user?.companyLogo ? <img src={user.companyLogo} className="w-full h-full object-cover" alt="Logo" /> : user?.name?.[0]}
+                        </div>
                         <div>
                           <p>{user?.name} (Você)</p>
                           <p className="text-[8px] text-muted uppercase tracking-tighter opacity-50">{user?.email}</p>
@@ -1790,10 +1796,15 @@ const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, d
             <div className="grid gap-4 max-h-[1000px] overflow-y-auto custom-scrollbar pr-4">
               {adminUsers.map(u => (
                 <div key={u._id} className="glass p-6 flex items-center justify-between hover:border-blue-500/20 transition-all gap-8">
-                  <div className="flex-1 min-w-[150px]">
-                    <h5 className="font-black text-sm">{u.name || 'Sem Nome'}</h5>
-                    <p className="text-[10px] font-bold text-muted uppercase tracking-widest">{u.email}</p>
-                    {u.companyName && <p className="text-[8px] font-black text-blue-500 uppercase mt-1">{u.companyName}</p>}
+                  <div className="flex items-center gap-4 flex-1 min-w-[150px]">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 font-black overflow-hidden shrink-0 border border-blue-500/20">
+                      {u.companyLogo ? <img src={u.companyLogo} className="w-full h-full object-cover" alt="Logo" /> : (u.name?.[0] || 'U')}
+                    </div>
+                    <div>
+                      <h5 className="font-black text-sm">{u.name || 'Sem Nome'}</h5>
+                      <p className="text-[10px] font-bold text-muted uppercase tracking-widest">{u.email}</p>
+                      {u.companyName && <p className="text-[8px] font-black text-blue-500 uppercase mt-1">{u.companyName}</p>}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-6">
