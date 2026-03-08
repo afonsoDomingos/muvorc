@@ -246,7 +246,10 @@ const App = () => {
     };
 
     try {
+      console.log(`[AUTH] Enviando pedido de ${authMode} para: ${apiUrl}`);
       const res = await axios.post(apiUrl, payload);
+      console.log(`[AUTH] Resposta recebida:`, res.status);
+
       if (authMode === 'login') {
         localStorage.setItem('ocrmuv_token', res.data.token);
         setToken(res.data.token);
@@ -258,6 +261,7 @@ const App = () => {
         showNotify('Conta criada! Inicia sessão agora.');
       }
     } catch (err) {
+      console.error(`[AUTH] Erro no ${authMode}:`, err.response?.data || err.message);
       setError(err.response?.data?.error || 'Erro na autenticação. Verifique os dados.');
     }
   };
@@ -672,16 +676,40 @@ const App = () => {
                   {/* Decorative Gradient Background */}
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                  <input {...getInputProps()} />
-                  <div className="w-24 h-24 rounded-[32px] bg-gray-500/5 flex items-center justify-center mb-8 border border-white/5 shadow-inner transition-transform group-hover:scale-110 duration-500">
-                    {file ? <CheckCircle2 className="w-10 h-10 text-blue-500" /> : <Upload className="w-10 h-10 text-white/20" />}
-                  </div>
+                  {/* Scanning Laser Effect when drag active or file selected */}
+                  {(isDragActive || file) && (
+                    <motion.div
+                      initial={{ top: '0%' }}
+                      animate={{ top: '100%' }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent z-10 shadow-[0_0_15px_rgba(59,130,246,0.8)]"
+                    />
+                  )}
 
-                  <h2 className="text-2xl font-black text-white mb-2 tracking-tight uppercase">
-                    {file ? file.name : 'ENVIAR FICHEIRO'}
+                  <input {...getInputProps()} />
+                  <motion.div
+                    animate={file ? { scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] } : {}}
+                    transition={{ duration: 0.5 }}
+                    className="w-24 h-24 rounded-[32px] bg-gray-500/5 flex items-center justify-center mb-8 border border-white/5 shadow-inner transition-transform group-hover:scale-110 duration-500 relative z-20"
+                  >
+                    {file ? (
+                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                        <CheckCircle2 className="w-10 h-10 text-blue-500" />
+                      </motion.div>
+                    ) : (
+                      <Upload className="w-10 h-10 text-white/20 group-hover:text-blue-500 transition-colors" />
+                    )}
+                  </motion.div>
+
+                  <h2 className="text-2xl font-black text-white mb-2 tracking-tight uppercase relative z-20">
+                    {file ? (
+                      <Typewriter text={file.name} speed={30} />
+                    ) : (
+                      'ENVIAR FICHEIRO'
+                    )}
                   </h2>
-                  <p className="text-blue-500/60 text-[10px] font-black uppercase tracking-[0.4em] mb-4">
-                    PDF • IMAGENS • DOCUMENTOS
+                  <p className="text-blue-500/60 text-[10px] font-black uppercase tracking-[0.4em] mb-4 relative z-20 text-center">
+                    {file ? `${(file.size / 1024).toFixed(1)} KB • PRONTO PARA SCAN` : 'PDF • IMAGENS • DOCUMENTOS'}
                   </p>
                 </div>
 
@@ -761,14 +789,21 @@ const App = () => {
                     <Typewriter text={result} speed={2} />
                   )
                 ) : loading ? (
-                  <div className="h-full flex flex-col items-center justify-center gap-6 text-white/20">
-                    <div className="relative">
-                      <Loader2 className="animate-spin w-12 h-12" />
-                      <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black">
-                        {progress}
-                      </div>
+                  <div className="h-full flex flex-col items-center justify-center gap-8 py-12">
+                    <NeuralProcessor progress={progress} />
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="font-black uppercase text-[12px] tracking-[0.6em] text-blue-500 animate-pulse">Processamento Neural</span>
+                      <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest italic font-mono">
+                        Analizando camadas de dados... {progress}%
+                      </span>
                     </div>
-                    <span className="font-black uppercase text-[10px] tracking-[0.6em]">Extraindo Dados...</span>
+                    <div className="w-64 h-1 bg-white/5 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        className="h-full bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-white/5">
@@ -834,7 +869,7 @@ const App = () => {
             </button>
           </div>
         </div>
-      </div>
+      </div >
 
 
       <footer className="shrink-0 px-12 py-8 border-t border-white/5 max-w-[1600px] mx-auto w-full opacity-40 hover:opacity-100 transition-opacity flex justify-between items-center gap-6 text-[9px] font-black text-white uppercase tracking-[0.3em]">
@@ -856,7 +891,7 @@ const App = () => {
         settings={confirmModal}
         onClose={() => setConfirmModal({ ...confirmModal, show: false })}
       />
-    </div>
+    </div >
   );
 };
 
@@ -906,28 +941,112 @@ const Typewriter = ({ text, speed = 50, delay = 0, iterate = false }) => {
 // --- Beautiful UI Feedback Components ---
 
 const NotifyContainer = ({ notifications }) => (
-  <div className="fixed bottom-10 right-10 z-[300] flex flex-col gap-4 pointer-events-none">
-    <AnimatePresence>
+  <div className="fixed top-10 right-10 z-[300] flex flex-col gap-4 pointer-events-none">
+    <AnimatePresence mode="popLayout">
       {notifications.map(n => (
         <motion.div
           key={n.id}
-          initial={{ opacity: 0, x: 50, scale: 0.9 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
-          className={`glass px-6 py-4 flex items-center gap-4 border-l-4 shadow-2xl min-w-[300px] backdrop-blur-xl ${n.type === 'error' ? 'border-red-500 bg-red-500/5' : 'border-blue-500 bg-blue-500/5'
+          layout
+          initial={{ opacity: 0, y: -20, scale: 0.9, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+          exit={{ opacity: 0, scale: 0.8, x: 20, transition: { duration: 0.2 } }}
+          className={`glass px-8 py-5 flex items-center gap-5 border shadow-2xl min-w-[320px] backdrop-blur-3xl overflow-hidden relative group/notify ${n.type === 'error' ? 'border-red-500/30 bg-red-500/5' : 'border-blue-500/30 bg-blue-500/5'
             }`}
         >
-          {n.type === 'error' ? (
-            <AlertCircle className="w-5 h-5 text-red-500" />
-          ) : (
-            <CheckCircle2 className="w-5 h-5 text-blue-500" />
-          )}
-          <span className="text-[10px] font-black uppercase tracking-widest text-main">{n.message}</span>
+          {/* Animated background glow */}
+          <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-[40px] opacity-20 transition-all group-hover/notify:scale-150 ${n.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+            }`} />
+
+          <div className="relative z-10">
+            {n.type === 'error' ? (
+              <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/20">
+                <AlertCircle className="w-5 h-5 text-red-500" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/20">
+                <Sparkles className="w-5 h-5 text-blue-500" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1 relative z-10">
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">
+              {n.type === 'error' ? 'ALERTA DE SISTEMA' : 'NOTIFICAÇÃO NEURAL'}
+            </span>
+            <span className="text-[10px] font-bold text-white/60 lowercase tracking-wide first-letter:uppercase">
+              {n.message}
+            </span>
+          </div>
+
+          {/* Progress bar timer */}
+          <motion.div
+            initial={{ width: '100%' }}
+            animate={{ width: '0%' }}
+            transition={{ duration: 4, ease: 'linear' }}
+            className={`absolute bottom-0 left-0 h-[3px] z-20 ${n.type === 'error' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]'
+              }`}
+          />
         </motion.div>
       ))}
     </AnimatePresence>
   </div>
 );
+
+const NeuralProcessor = ({ progress }) => {
+  return (
+    <div className="relative w-48 h-48 flex items-center justify-center">
+      {/* Outer Rings */}
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+        className="absolute inset-0 border-[2px] border-dashed border-blue-500/20 rounded-full"
+      />
+      <motion.div
+        animate={{ rotate: -360 }}
+        transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
+        className="absolute inset-4 border-[1px] border-blue-500/10 rounded-full"
+      />
+
+      {/* Central Core */}
+      <motion.div
+        animate={{
+          scale: [1, 1.1, 1],
+          boxShadow: [
+            '0 0 20px rgba(59,130,246,0.2)',
+            '0 0 50px rgba(59,130,246,0.4)',
+            '0 0 20px rgba(59,130,246,0.2)',
+          ]
+        }}
+        transition={{ duration: 2, repeat: Infinity }}
+        className="w-20 h-20 rounded-[24px] bg-blue-600/20 border border-blue-500/40 flex items-center justify-center relative z-10 backdrop-blur-md"
+      >
+        <Cpu className="w-8 h-8 text-blue-500" />
+
+        {/* Progress Text */}
+        <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 whitespace-nowrap">
+          <span className="text-2xl font-black text-white font-mono">{progress}%</span>
+        </div>
+      </motion.div>
+
+      {/* Orbiting Particles */}
+      {[0, 60, 120, 180, 240, 300].map((deg, i) => (
+        <motion.div
+          key={i}
+          animate={{
+            rotate: [deg, deg + 360],
+            scale: [0.8, 1.2, 0.8]
+          }}
+          transition={{
+            rotate: { duration: 8 - i, repeat: Infinity, ease: 'linear' },
+            scale: { duration: 2, repeat: Infinity }
+          }}
+          className="absolute w-2 h-2 rounded-full bg-blue-400/40 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+          style={{ transformOrigin: 'center center', top: '10%', left: '50%', marginTop: '-4px', marginLeft: '-4px' }}
+        />
+      ))}
+    </div>
+  );
+};
 
 const ConfirmModal = ({ settings, onClose }) => (
   <AnimatePresence>
@@ -1004,52 +1123,113 @@ const Sidebar = ({ items, activeTab, setActiveTab }) => (
 // --- Stable Overlay Components ---
 
 const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth, error }) => (
-  <div className="flex flex-col items-center justify-center pt-10">
-    <div className="glass p-6 md:p-8 max-w-md w-full flex flex-col gap-4 border-main/10 border">
-      <div className="text-center">
-        <h2 className="text-2xl font-black text-main tracking-tighter">{authMode === 'login' ? 'Acesso Corporativo' : 'Nova Conta Industrial'}</h2>
-        <p className="text-[10px] font-bold text-muted uppercase tracking-[0.2em] mt-1">{authMode === 'login' ? 'Credenciais Autorizadas' : 'Registo Enterprise'}</p>
+  <div className="flex flex-col lg:flex-row items-center justify-center gap-16 pt-5 pb-10 max-w-5xl mx-auto">
+    {/* Left Side: Brand & Benefits */}
+    <div className="flex flex-col gap-8 flex-1 max-w-md hidden lg:flex">
+      <div className="flex flex-col gap-2">
+        <h2 className="text-6xl font-black text-white tracking-tighter leading-none">
+          {authMode === 'login' ? 'BEM-VINDO DE VOLTA.' : 'JUNTE-SE À ELITE.'}
+        </h2>
+        <div className="h-1.5 w-24 bg-blue-500 rounded-full mt-4 shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
       </div>
 
-      <form onSubmit={handleAuth} className="flex flex-col gap-3">
+      <p className="text-muted text-sm leading-relaxed font-bold uppercase tracking-wider opacity-60">
+        Aceda ao motor neural de processamento documental mais avançado do mercado. 100% privado, 100% industrial.
+      </p>
+
+      <div className="grid gap-6">
+        {[
+          { icon: <Shield className="w-5 h-5" />, title: 'Privacy First', desc: 'Dados locais. Zero fugas.' },
+          { icon: <Zap className="w-5 h-5" />, title: 'Turbo Neural', desc: 'OCR em milissegundos.' },
+          { icon: <Database className="w-5 h-5" />, title: 'Smart Archive', desc: 'Gestão cloud inteligente.' }
+        ].map(benefit => (
+          <div key={benefit.title} className="flex gap-4 items-center group">
+            <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-blue-500 border border-white/5 group-hover:border-blue-500/30 transition-all shadow-xl">
+              {benefit.icon}
+            </div>
+            <div>
+              <h4 className="text-[11px] font-black text-white uppercase tracking-widest">{benefit.title}</h4>
+              <p className="text-[9px] text-muted font-bold uppercase opacity-50">{benefit.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Right Side: Auth Form */}
+    <div className="glass p-8 md:p-12 w-full max-w-md flex flex-col gap-8 border-white/10 border relative overflow-hidden group/form">
+      {/* Decorative background scan line */}
+      <motion.div
+        animate={{ left: ['-100%', '200%'] }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+        className="absolute top-0 bottom-0 w-[1px] bg-blue-500/20 z-0 pointer-events-none"
+      />
+
+      <div className="relative z-10 flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-1 bg-blue-500 rounded-full animate-ping" />
+          <span className="text-[8px] font-black text-blue-500 uppercase tracking-[0.4em]">Protocolo {authMode === 'login' ? '01-LOGIN' : '02-REGISTO'}</span>
+        </div>
+        <h3 className="text-3xl font-black text-white tracking-tighter uppercase italic leading-none">
+          {authMode === 'login' ? 'Terminal de Acesso' : 'Solicitar Credenciais'}
+        </h3>
+        <p className="text-[9px] font-black text-muted uppercase tracking-[0.4em] mt-1">
+          {authMode === 'login' ? 'Insira os seus dados de operador para autenticação' : 'Preencha o formulário para iniciar o protocolo de entrada'}
+        </p>
+      </div>
+
+      <form onSubmit={handleAuth} className="flex flex-col gap-5 relative z-10">
         {authMode === 'register' && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="companyName" className="text-[9px] font-black uppercase tracking-widest text-muted ml-1">Nome da Empresa</label>
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="companyName" className="text-[9px] font-black uppercase tracking-[0.3em] text-muted ml-1">Organização Enterprise</label>
               <div className="relative">
-                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                <input id="companyName" required type="text" placeholder="Ex: MUV Digital Lda" className="panel w-full py-3 pl-12 pr-4 text-xs font-bold" value={authData.companyName} onChange={e => setAuthData({ ...authData, companyName: e.target.value })} />
+                <Building2 className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
+                <input id="companyName" required type="text" placeholder="NOME DA EMPRESA" className="panel w-full py-4 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.companyName} onChange={e => setAuthData({ ...authData, companyName: e.target.value })} />
               </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="representative" className="text-[9px] font-black uppercase tracking-widest text-muted ml-1">Representante Legal</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="representative" className="text-[9px] font-black uppercase tracking-[0.3em] text-muted ml-1">Identidade do Operador</label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                <input id="representative" required type="text" placeholder="Ex: João Silva" className="panel w-full py-3 pl-12 pr-4 text-xs font-bold" value={authData.name} onChange={e => setAuthData({ ...authData, name: e.target.value })} />
+                <User className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
+                <input id="representative" required type="text" placeholder="NOME COMPLETO" className="panel w-full py-4 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.name} onChange={e => setAuthData({ ...authData, name: e.target.value })} />
               </div>
             </div>
-          </>
+          </motion.div>
         )}
-        <div className="flex flex-col gap-1">
-          <label htmlFor="authEmail" className="text-[9px] font-black uppercase tracking-widest text-muted ml-1">Email Profissional</label>
+
+        <div className="flex flex-col gap-2">
+          <label htmlFor="authEmail" className="text-[9px] font-black uppercase tracking-[0.3em] text-muted ml-1">Canal de Comunicação (Email)</label>
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-            <input id="authEmail" required type="email" placeholder="nome@empresa.com" className="panel w-full py-3 pl-12 pr-4 text-xs font-bold" value={authData.email} onChange={e => setAuthData({ ...authData, email: e.target.value })} />
+            <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
+            <input id="authEmail" required type="email" placeholder="ADMIN@EMPRESA.COM" className="panel w-full py-4 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.email} onChange={e => setAuthData({ ...authData, email: e.target.value })} />
           </div>
         </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="authPassword" className="text-[9px] font-black uppercase tracking-widest text-muted ml-1">Chave de Segurança</label>
+
+        <div className="flex flex-col gap-2">
+          <label htmlFor="authPassword" className="text-[9px] font-black uppercase tracking-[0.3em] text-muted ml-1">Chave Encriptada</label>
           <div className="relative">
-            <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-            <input id="authPassword" required type="password" placeholder="••••••••" className="panel w-full py-3 pl-12 pr-4 text-xs font-bold" value={authData.password} onChange={e => setAuthData({ ...authData, password: e.target.value })} />
+            <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
+            <input id="authPassword" required type="password" placeholder="••••••••" className="panel w-full py-4 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.password} onChange={e => setAuthData({ ...authData, password: e.target.value })} />
           </div>
         </div>
-        {error && <div className="p-3 bg-red-500/5 border border-red-500/10 rounded-lg flex items-center gap-3 text-red-500 text-[9px] font-bold uppercase"><AlertCircle className="w-3 h-3" /> {error}</div>}
-        <button type="submit" className="btn-tesla-blue py-4 mt-2 text-[10px] font-black uppercase tracking-[0.3em] shadow-xl">{authMode === 'login' ? 'ENTRAR NO SISTEMA' : 'CRIAR ACESSO'}</button>
+
+        {error && (
+          <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-500 text-[9px] font-black uppercase tracking-widest">
+            <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+          </motion.div>
+        )}
+
+        <button type="submit" className="btn-tesla-blue py-5 mt-4 text-[10px] font-black uppercase tracking-[0.4em] shadow-[0_20px_40px_rgba(59,130,246,0.25)] hover:shadow-blue-500/40 transition-all active:scale-95 group">
+          <span className="flex items-center justify-center gap-3">
+            {authMode === 'login' ? 'AUTENTICAR NO SISTEMA' : 'SOLICITAR ACESSO NEURAL'}
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </span>
+        </button>
       </form>
 
-      <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="text-[9px] font-black text-muted uppercase tracking-widest hover:text-blue-500 transition-colors">
-        {authMode === 'login' ? 'Sem conta? Solicitar Registo' : 'Já possui acesso? Iniciar Sessão'}
+      <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="text-[9px] font-black text-muted uppercase tracking-[0.2em] hover:text-blue-500 transition-colors relative z-10 text-center">
+        {authMode === 'login' ? 'SOLICITAR ACESSO PARA NOVA ENTIDADE' : 'JÁ POSSUI CREDENCIAIS DE OPERADOR?'}
       </button>
     </div>
   </div>
