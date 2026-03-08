@@ -320,14 +320,25 @@ const App = () => {
   };
 
   const approvePayment = async (id, status, subscription) => {
+    const labels = { approved: 'Aprovado ✓', rejected: 'Rejeitado ✗', suspended: 'Suspenso ⏸' };
     try {
       const apiUrl = `/api/admin/payment/${id}`;
       await axios.patch(apiUrl, { status, subscription }, { headers: { Authorization: `Bearer ${token}` } });
-      showNotify(`Pagamento ${status === 'approved' ? 'Aprovado' : 'Rejeitado'}`);
+      showNotify(`Pagamento ${labels[status] || status}`);
       fetchAdminData();
       fetchAdminPayments();
     } catch (err) {
       showNotify('Erro ao processar pagamento', 'error');
+    }
+  };
+
+  const handleUpdateProfile = async (profileData) => {
+    try {
+      const res = await axios.patch('/api/user/profile', profileData, { headers: { Authorization: `Bearer ${token}` } });
+      setUser(res.data.user);
+      showNotify('Perfil atualizado com sucesso!');
+    } catch (err) {
+      showNotify('Erro ao atualizar perfil', 'error');
     }
   };
 
@@ -339,6 +350,19 @@ const App = () => {
       fetchAdminData();
     } catch (err) {
       showNotify('Erro ao atualizar utilizador', 'error');
+    }
+  };
+
+  const handlePasswordChange = async (id) => {
+    const newPass = prompt("Insira a nova palavra-passe para este utilizador:");
+    if (!newPass) return;
+    if (newPass.length < 6) return showNotify('Palavra-passe muito curta (min 6 caracteres)', 'error');
+
+    try {
+      await axios.patch(`/api/admin/user/${id}`, { password: newPass }, { headers: { Authorization: `Bearer ${token}` } });
+      showNotify('Palavra-passe atualizada com sucesso');
+    } catch (err) {
+      showNotify('Erro ao atualizar palavra-passe', 'error');
     }
   };
 
@@ -518,6 +542,7 @@ const App = () => {
                   setFolderName={setFolderName}
                   setFile={setFile}
                   setCurrentRecordId={setCurrentRecordId}
+                  handleUpdateProfile={handleUpdateProfile}
                 />
               )}
               {activeOverlay === 'admin' && (
@@ -528,6 +553,7 @@ const App = () => {
                   approvePayment={approvePayment}
                   deleteUser={deleteUser}
                   updateUser={updateUser}
+                  handlePasswordChange={handlePasswordChange}
                   activeTab={activeTab}
                   setActiveTab={setActiveTab}
                 />
@@ -1262,7 +1288,7 @@ const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth,
           <label htmlFor="authEmail" className="text-[9px] font-black uppercase tracking-[0.3em] text-muted ml-1">Canal de Comunicação (Email)</label>
           <div className="relative">
             <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
-            <input id="authEmail" required type="email" placeholder="ADMIN@EMPRESA.COM" className="panel w-full py-3.5 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.email} onChange={e => setAuthData({ ...authData, email: e.target.value })} />
+            <input id="authEmail" required type="email" placeholder="digite seu email..." className="panel w-full py-3.5 pl-14 pr-6 text-xs font-medium text-main focus:border-blue-500 outline-none transition-all placeholder:text-muted/30" value={authData.email} onChange={e => setAuthData({ ...authData, email: e.target.value })} />
           </div>
         </div>
 
@@ -1270,7 +1296,7 @@ const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth,
           <label htmlFor="authPassword" className="text-[9px] font-black uppercase tracking-[0.3em] text-muted ml-1">Chave Encriptada</label>
           <div className="relative">
             <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
-            <input id="authPassword" required type="password" placeholder="••••••••" className="panel w-full py-3.5 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.password} onChange={e => setAuthData({ ...authData, password: e.target.value })} />
+            <input id="authPassword" required type="password" placeholder="••••••••" className="panel w-full py-3.5 pl-14 pr-6 text-xs font-medium text-main focus:border-blue-500 outline-none transition-all placeholder:text-muted/30" value={authData.password} onChange={e => setAuthData({ ...authData, password: e.target.value })} />
           </div>
         </div>
 
@@ -1295,7 +1321,7 @@ const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth,
   </div>
 );
 
-const DashboardOverlay = ({ user, userHistory, deleteRecord, setResult, setActiveOverlay, logout, activeTab, setActiveTab }) => {
+const DashboardOverlay = ({ user, userHistory, deleteRecord, setResult, setActiveOverlay, logout, activeTab, setActiveTab, handleUpdateProfile, setActiveImage, setFolderName, setFile, setCurrentRecordId }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterFolder, setFilterFolder] = useState('Todos');
 
@@ -1306,11 +1332,35 @@ const DashboardOverlay = ({ user, userHistory, deleteRecord, setResult, setActiv
     return matchSearch && matchFolder;
   });
 
+  const [profileForm, setProfileForm] = useState({ name: user?.name || '', companyName: user?.companyName || '' });
+  const [logoPreview, setLogoPreview] = useState(user?.companyLogo || null);
+  const [logoFile, setLogoFile] = useState(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const handleLogoSelect = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    setLogoFile(f);
+    const reader = new FileReader();
+    reader.onloadend = () => setLogoPreview(reader.result);
+    reader.readAsDataURL(f);
+  };
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      await handleUpdateProfile({ name: profileForm.name, companyName: profileForm.companyName, logoBase64: logoFile ? logoPreview : undefined });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const sidebarItems = [
     { id: 'home', label: 'Painel Geral', icon: <Activity className="w-4 h-4" /> },
     { id: 'archive', label: 'Arquivo Digital', icon: <FileText className="w-4 h-4" /> },
     { id: 'team', label: 'Colaboradores', icon: <Users className="w-4 h-4" /> },
     { id: 'billing', label: 'Faturação', icon: <Key className="w-4 h-4" /> },
+    { id: 'profile', label: 'Meu Perfil', icon: <User className="w-4 h-4" /> },
   ];
 
   return (
@@ -1531,13 +1581,77 @@ const DashboardOverlay = ({ user, userHistory, deleteRecord, setResult, setActiv
           </div>
         )}
 
+        {activeTab === 'profile' && (
+          <div className="flex flex-col gap-8 max-w-lg">
+            <div>
+              <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 text-main mb-1">Identidade da Empresa</h4>
+              <p className="text-[10px] text-muted">Atualize o logótipo, nome e representante da sua organização.</p>
+            </div>
+
+            {/* Logo Upload */}
+            <div className="flex items-center gap-6">
+              <div className="w-20 h-20 rounded-xl bg-main/5 border-2 border-dashed border-main/20 overflow-hidden flex items-center justify-center flex-shrink-0">
+                {logoPreview
+                  ? <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
+                  : <Building2 className="w-8 h-8 text-muted opacity-30" />}
+              </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="logoUpload" className="btn-tesla-blue px-5 py-2.5 text-[10px] font-black uppercase cursor-pointer inline-flex items-center gap-2">
+                  <Upload className="w-3 h-3" /> Carregar Logótipo
+                </label>
+                <input id="logoUpload" type="file" accept="image/*" className="hidden" onChange={handleLogoSelect} />
+                <p className="text-[9px] text-muted">PNG, JPG ou SVG. Máx 2MB.</p>
+              </div>
+            </div>
+
+            {/* Name & Company fields */}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-muted">Nome do Representante</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
+                  <input
+                    type="text"
+                    value={profileForm.name}
+                    onChange={e => setProfileForm(p => ({ ...p, name: e.target.value }))}
+                    className="panel w-full py-3 pl-12 pr-5 text-sm font-medium text-main focus:border-blue-500 outline-none transition-all"
+                    placeholder="O seu nome"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-muted">Nome da Empresa</label>
+                <div className="relative">
+                  <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
+                  <input
+                    type="text"
+                    value={profileForm.companyName}
+                    onChange={e => setProfileForm(p => ({ ...p, companyName: e.target.value }))}
+                    className="panel w-full py-3 pl-12 pr-5 text-sm font-medium text-main focus:border-blue-500 outline-none transition-all"
+                    placeholder="Nome da empresa"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveProfile}
+              disabled={savingProfile}
+              className="btn-tesla-blue py-3.5 text-[10px] font-black uppercase flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {savingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {savingProfile ? 'A guardar...' : 'Guardar Alterações'}
+            </button>
+          </div>
+        )}
+
       </div>
     </div>
   );
 };
 
 
-const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, deleteUser, updateUser, activeTab, setActiveTab }) => {
+const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, deleteUser, updateUser, handlePasswordChange, activeTab, setActiveTab }) => {
   const sidebarItems = [
     { id: 'home', label: 'Estatísticas', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'payments', label: 'Verificações', icon: <Shield className="w-4 h-4" /> },
@@ -1589,30 +1703,83 @@ const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, d
 
         {activeTab === 'payments' && (
           <div className="flex flex-col gap-6">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-2 text-main">Pagamentos por Autorizar</h4>
-            <div className="grid lg:grid-cols-2 gap-4 max-h-[1000px] overflow-y-auto custom-scrollbar pr-4">
-              {adminPayments.filter(p => p.status === 'pending').map(p => (
-                <div key={p._id} className="glass p-6 flex flex-col gap-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h5 className="font-black text-sm">{p.userId?.name || 'Utilizador'}</h5>
-                      <p className="text-[10px] font-bold text-muted uppercase tracking-widest">{p.userId?.email} • {p.planName}</p>
-                      <p className="text-sm font-black text-blue-500 mt-2">{p.amount} {p.currency}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => approvePayment(p._id, 'approved', p.planName)} title="Aprovar" className="p-3 text-green-500 bg-green-500/5 hover:bg-green-500/10 rounded-lg transition-all"><CheckCircle2 className="w-4 h-4" /></button>
-                      <button onClick={() => approvePayment(p._id, 'rejected')} title="Rejeitar" className="p-3 text-red-500 bg-red-500/5 hover:bg-red-500/10 rounded-lg transition-all"><X className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-                  <a href={p.proofUrl} target="_blank" rel="noreferrer" className="block w-full h-40 rounded-lg bg-gray-500/5 border border-gray-500/10 overflow-hidden relative group">
-                    <img src={p.proofUrl} className="w-full h-full object-cover opacity-50 group-hover:opacity-100 transition-all" alt="Comprovativo" />
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/40 text-[10px] font-black uppercase tracking-widest text-white">Ver Comprovativo</div>
-                  </a>
+            {/* Summary counters */}
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: 'Pendentes', count: adminPayments.filter(p => p.status === 'pending').length, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+                { label: 'Aprovados', count: adminPayments.filter(p => p.status === 'approved').length, color: 'text-green-400', bg: 'bg-green-400/10' },
+                { label: 'Rejeitados / Suspensos', count: adminPayments.filter(p => p.status === 'rejected' || p.status === 'suspended').length, color: 'text-red-400', bg: 'bg-red-400/10' },
+              ].map(stat => (
+                <div key={stat.label} className={`panel p-4 flex flex-col gap-1 ${stat.bg} border-0`}>
+                  <span className={`text-2xl font-black ${stat.color}`}>{stat.count}</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-muted">{stat.label}</span>
                 </div>
               ))}
-              {adminPayments.filter(p => p.status === 'pending').length === 0 && (
-                <div className="panel p-20 flex flex-col items-center justify-center opacity-20 border-dashed w-full lg:col-span-2"><Activity className="w-10 h-10 mb-4" /><p className="text-[10px] font-black uppercase tracking-widest">Sem pagamentos pendentes</p></div>
+            </div>
+
+            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 text-main">Todos os Pagamentos</h4>
+            <div className="grid lg:grid-cols-2 gap-4 max-h-[800px] overflow-y-auto custom-scrollbar pr-4">
+              {adminPayments.length === 0 && (
+                <div className="panel p-20 flex flex-col items-center justify-center opacity-20 border-dashed w-full lg:col-span-2">
+                  <Activity className="w-10 h-10 mb-4" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">Sem pagamentos registados</p>
+                </div>
               )}
+              {adminPayments.map(p => {
+                const statusStyles = {
+                  pending: { label: 'PENDENTE', cls: 'text-yellow-400 bg-yellow-400/10' },
+                  approved: { label: 'APROVADO', cls: 'text-green-400 bg-green-400/10' },
+                  rejected: { label: 'REJEITADO', cls: 'text-red-400 bg-red-400/10' },
+                  suspended: { label: 'SUSPENSO', cls: 'text-orange-400 bg-orange-400/10' },
+                };
+                const s = statusStyles[p.status] || statusStyles.pending;
+                return (
+                  <div key={p._id} className="glass p-6 flex flex-col gap-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h5 className="font-black text-sm">{p.userId?.name || 'Utilizador'}</h5>
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${s.cls}`}>{s.label}</span>
+                        </div>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest">{p.userId?.email} • {p.planName}</p>
+                        <p className="text-sm font-black text-blue-500 mt-1">{p.amount} {p.currency}</p>
+                      </div>
+                    </div>
+                    {p.proofUrl && (
+                      <a href={p.proofUrl} target="_blank" rel="noreferrer" className="block w-full h-32 rounded-lg bg-gray-500/5 border border-gray-500/10 overflow-hidden relative group">
+                        <img src={p.proofUrl} className="w-full h-full object-cover opacity-50 group-hover:opacity-100 transition-all" alt="Comprovativo" />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/40 text-[10px] font-black uppercase tracking-widest text-white">Ver Comprovativo</div>
+                      </a>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => approvePayment(p._id, 'approved', p.planName)}
+                        disabled={p.status === 'approved'}
+                        title="Aprovar"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[9px] font-black uppercase rounded-lg text-green-400 bg-green-400/5 hover:bg-green-400/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Aprovar
+                      </button>
+                      <button
+                        onClick={() => approvePayment(p._id, 'suspended')}
+                        disabled={p.status === 'suspended'}
+                        title="Suspender"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[9px] font-black uppercase rounded-lg text-orange-400 bg-orange-400/5 hover:bg-orange-400/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <Shield className="w-3.5 h-3.5" /> Suspender
+                      </button>
+                      <button
+                        onClick={() => approvePayment(p._id, 'rejected')}
+                        disabled={p.status === 'rejected'}
+                        title="Rejeitar"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[9px] font-black uppercase rounded-lg text-red-400 bg-red-400/5 hover:bg-red-400/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <X className="w-3.5 h-3.5" /> Rejeitar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1635,10 +1802,10 @@ const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, d
                       <select
                         value={u.role}
                         onChange={(e) => updateUser(u._id, { role: e.target.value })}
-                        className="bg-main/5 border border-main/10 rounded px-2 py-1 text-[9px] font-black text-main focus:border-blue-500 outline-none"
+                        className="bg-black/20 dark:bg-white/5 border border-main/10 rounded px-3 py-1.5 text-[10px] font-black text-main focus:border-blue-500 outline-none cursor-pointer"
                       >
-                        <option value="user" className="bg-panel">Utilizador (User)</option>
-                        <option value="admin" className="bg-panel">Administrador (Admin)</option>
+                        <option value="user" className="text-black bg-white dark:text-white dark:bg-black">Utilizador</option>
+                        <option value="admin" className="text-black bg-white dark:text-white dark:bg-black">Administrador</option>
                       </select>
                     </div>
 
@@ -1647,23 +1814,32 @@ const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, d
                       <select
                         value={u.subscription}
                         onChange={(e) => updateUser(u._id, { subscription: e.target.value })}
-                        className="bg-main/5 border border-main/10 rounded px-2 py-1 text-[9px] font-black text-main focus:border-blue-500 outline-none"
+                        className="bg-black/20 dark:bg-white/5 border border-main/10 rounded px-3 py-1.5 text-[10px] font-black text-main focus:border-blue-500 outline-none cursor-pointer"
                       >
-                        <option value="LOCAL" className="bg-panel">LOCAL (Grátis)</option>
-                        <option value="HYPER" className="bg-panel">HYPER (Pro)</option>
-                        <option value="NEURAL" className="bg-panel">NEURAL (Enterprise)</option>
-                        <option value="GLOBAL NEURAL" className="bg-panel">GLOBAL NEURAL</option>
+                        <option value="LOCAL" className="text-black bg-white dark:text-white dark:bg-black">LOCAL</option>
+                        <option value="HYPER" className="text-black bg-white dark:text-white dark:bg-black">HYPER</option>
+                        <option value="NEURAL" className="text-black bg-white dark:text-white dark:bg-black">NEURAL</option>
+                        <option value="GLOBAL NEURAL" className="text-black bg-white dark:text-white dark:bg-black">GLOBAL NEURAL</option>
                       </select>
                     </div>
 
                     {u.email !== 'admin@ocrmuv.com' && (
-                      <button
-                        onClick={() => deleteUser(u._id)}
-                        className="p-3 text-red-500 bg-red-500/5 hover:bg-red-500/10 rounded-lg transition-all self-end"
-                        title="Apagar Utilizador"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handlePasswordChange(u._id)}
+                          className="p-3 text-blue-500 bg-blue-500/5 hover:bg-blue-500/10 rounded-lg transition-all self-end"
+                          title="Alterar Senha"
+                        >
+                          <Key className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteUser(u._id)}
+                          className="p-3 text-red-500 bg-red-500/5 hover:bg-red-500/10 rounded-lg transition-all self-end"
+                          title="Apagar Utilizador"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

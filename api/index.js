@@ -34,6 +34,7 @@ const UserSchema = new mongoose.Schema({
     companyName: String,
     role: { type: String, default: 'user' }, // user, admin
     subscription: { type: String, default: 'LOCAL' }, // LOCAL, HYPER, NEURAL
+    companyLogo: String,
     createdAt: { type: Date, default: Date.now },
     lastActive: { type: Date, default: Date.now }
 });
@@ -199,6 +200,27 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
     }
 });
 
+app.patch('/api/user/profile', authenticate, async (req, res) => {
+    try {
+        const { name, companyName, logoBase64 } = req.body;
+        const updateData = { name, companyName };
+
+        if (logoBase64) {
+            const uploadRes = await cloudinary.uploader.upload(logoBase64, {
+                folder: 'ocrmuv_logos',
+                transformation: [{ width: 200, height: 200, crop: 'limit' }]
+            });
+            updateData.companyLogo = uploadRes.secure_url;
+        }
+
+        const user = await User.findByIdAndUpdate(req.userId, updateData, { new: true }).select('-password');
+        res.json({ message: 'Perfil atualizado!', user });
+    } catch (error) {
+        console.error('Update Profile Error:', error);
+        res.status(500).json({ error: 'Erro ao atualizar perfil' });
+    }
+});
+
 // Admin Routes
 app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
     try {
@@ -228,8 +250,14 @@ app.get('/api/admin/users', authenticate, isAdmin, async (req, res) => {
 
 app.patch('/api/admin/user/:id', authenticate, isAdmin, async (req, res) => {
     try {
-        const { role, subscription } = req.body;
-        const updated = await User.findByIdAndUpdate(req.params.id, { role, subscription }, { new: true });
+        const { role, subscription, password } = req.body;
+        const updateData = { role, subscription };
+
+        if (password) {
+            updateData.password = await bcrypt.hash(password, 10);
+        }
+
+        const updated = await User.findByIdAndUpdate(req.params.id, updateData, { new: true });
         res.json({ message: 'Utilizador atualizado', data: updated });
     } catch (error) {
         res.status(500).json({ error: 'Erro ao atualizar utilizador' });
