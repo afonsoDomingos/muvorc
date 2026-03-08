@@ -152,6 +152,11 @@ const App = () => {
   });
 
   const handleProcess = async () => {
+    if (!token) {
+      showNotify('⚠️ Acesso restrito. Inicia sessão para utilizar o poder neural do OCRMUV.', 'error');
+      setActiveOverlay('auth');
+      return;
+    }
     if (!file) return;
     setLoading(true);
     setProgress(0);
@@ -324,6 +329,11 @@ const App = () => {
   };
 
   const startCamera = async () => {
+    if (!token) {
+      showNotify('📸 Inicia sessão para utilizar o Scan Mobile.', 'error');
+      setActiveOverlay('auth');
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       setCameraStream(stream);
@@ -621,10 +631,17 @@ const App = () => {
 
           <header className="mb-8 flex justify-between items-start shrink-0">
             <div className="text-center md:text-left">
-              <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-3xl md:text-5xl font-black text-main tracking-tighter leading-tight">
-                Inteligência Documental <span className="text-secondary opacity-50 italic">Corporativa.</span>
+              <motion.h1
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-3xl md:text-5xl font-black text-main tracking-tighter leading-tight"
+              >
+                <Typewriter text="Inteligência Documental" speed={80} iterate={false} />
+                <span className="text-secondary opacity-50 italic block md:inline md:ml-3">Corporativa.</span>
               </motion.h1>
-              <p className="mt-3 text-muted font-medium text-xs md:text-sm max-w-2xl">A produtividade da sua empresa elevada por redes neuronais privadas.</p>
+              <p className="mt-3 text-muted font-medium text-xs md:text-sm max-w-2xl">
+                <Typewriter text="A produtividade da sua empresa elevada por redes neuronais privadas." speed={30} iterate={false} delay={1500} />
+              </p>
             </div>
             <button
               onClick={() => setIsMainSidebarOpen(!isMainSidebarOpen)}
@@ -729,7 +746,7 @@ const App = () => {
                       placeholder="Edite o conteúdo aqui..."
                     />
                   ) : (
-                    <pre className="whitespace-pre-wrap opacity-90">{result}</pre>
+                    <Typewriter text={result} speed={2} />
                   )
                 ) : loading ? (
                   <div className="h-full flex flex-col items-center justify-center gap-6 text-white/20">
@@ -832,6 +849,47 @@ const App = () => {
 };
 
 export default App;
+
+const Typewriter = ({ text, speed = 50, delay = 0, iterate = false }) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [started, setStarted] = useState(delay === 0);
+
+  useEffect(() => {
+    if (delay > 0) {
+      const timer = setTimeout(() => setStarted(true), delay);
+      return () => clearTimeout(timer);
+    }
+  }, [delay]);
+
+  useEffect(() => {
+    if (!started) return;
+
+    setDisplayedText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      // For very long text, type multiple characters at once to keep it fast
+      const charsToAppend = Math.max(1, Math.floor(text.length / 500));
+      const nextText = text.slice(0, i + charsToAppend);
+      setDisplayedText(nextText);
+      i += charsToAppend;
+
+      if (i >= text.length) {
+        clearInterval(interval);
+      }
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, [text, speed, started]);
+
+  return (
+    <span className="whitespace-pre-wrap relative">
+      {displayedText}
+      {started && displayedText.length < text.length && (
+        <span className="inline-block w-[6px] h-[15px] bg-blue-500 ml-1 animate-pulse" />
+      )}
+    </span>
+  );
+};
 
 // --- Beautiful UI Feedback Components ---
 
@@ -1229,11 +1287,11 @@ const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, d
             <div className="grid md:grid-cols-4 gap-6">
               {[
                 { icon: <Users />, label: 'Utilizadores', value: adminStats.totalUsers },
+                { icon: <Zap />, label: 'Ativos (24h)', value: adminStats.activeUsersCount || 0 },
                 { icon: <Activity />, label: 'Scans Totais', value: adminStats.totalOCR },
-                { icon: <BarChart3 />, label: 'Crescimento', value: '+12%' },
                 { icon: <Shield />, label: 'Estado Motor', value: 'Online' }
               ].map(stat => (
-                <div key={stat.label} className="glass p-8 flex flex-col gap-4">
+                <div key={stat.label} className="glass p-8 flex flex-col gap-4 transition-all hover:border-blue-500/30">
                   <div className="text-blue-500">{stat.icon}</div>
                   <h4 className="text-[10px] font-black uppercase tracking-widest opacity-40">{stat.label}</h4>
                   <p className="text-3xl font-black">{stat.value}</p>

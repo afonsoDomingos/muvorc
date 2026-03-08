@@ -34,7 +34,8 @@ const UserSchema = new mongoose.Schema({
     companyName: String,
     role: { type: String, default: 'user' }, // user, admin
     subscription: { type: String, default: 'LOCAL' }, // LOCAL, HYPER, NEURAL
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    lastActive: { type: Date, default: Date.now }
 });
 
 const OCRSchema = new mongoose.Schema({
@@ -102,6 +103,8 @@ const authenticate = (req, res, next) => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         req.userId = decoded.userId;
+        // Update lastActive timestamp without awaiting (bg update)
+        User.findByIdAndUpdate(req.userId, { lastActive: new Date() }).exec().catch(err => console.error('LastActive update failed:', err));
         next();
     } catch (err) {
         res.status(401).json({ error: 'Token inválido' });
@@ -159,8 +162,13 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
         const totalUsers = await User.countDocuments();
         const totalOCR = await OCR.countDocuments();
         const pendingPayments = await Payment.countDocuments({ status: 'pending' });
+
+        // Count users active in the last 24 hours
+        const activeTimeThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const activeUsersCount = await User.countDocuments({ lastActive: { $gte: activeTimeThreshold } });
+
         const recentOCR = await OCR.find().sort({ createdAt: -1 }).limit(5).populate('userId', 'email name');
-        res.json({ totalUsers, totalOCR, pendingPayments, recentOCR });
+        res.json({ totalUsers, totalOCR, pendingPayments, recentOCR, activeUsersCount });
     } catch (error) {
         res.status(500).json({ error: 'Erro ao carregar estatísticas' });
     }
