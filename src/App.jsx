@@ -80,7 +80,7 @@ const App = () => {
 
   const fetchUser = async () => {
     try {
-      const apiUrl = import.meta.env.MODE === 'development' ? `http://127.0.0.1:5000/api/auth/me` : `/api/auth/me`;
+      const apiUrl = '/api/auth/me';
       const res = await axios.get(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
       setUser(res.data);
     } catch (err) {
@@ -90,7 +90,7 @@ const App = () => {
 
   const fetchHistory = async () => {
     try {
-      const apiUrl = import.meta.env.MODE === 'development' ? `http://127.0.0.1:5000/api/ocr/history` : `/api/ocr/history`;
+      const apiUrl = '/api/ocr/history';
       const res = await axios.get(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
       setUserHistory(res.data);
     } catch (err) {
@@ -100,7 +100,7 @@ const App = () => {
 
   const fetchAdminData = async () => {
     try {
-      const baseUrl = import.meta.env.MODE === 'development' ? 'http://127.0.0.1:5000/api/admin' : '/api/admin';
+      const baseUrl = '/api/admin';
       const [statsRes, usersRes] = await Promise.all([
         axios.get(`${baseUrl}/stats`, { headers: { Authorization: `Bearer ${token}` } }),
         axios.get(`${baseUrl}/users`, { headers: { Authorization: `Bearer ${token}` } })
@@ -114,7 +114,7 @@ const App = () => {
 
   const fetchAdminPayments = async () => {
     try {
-      const apiUrl = import.meta.env.MODE === 'development' ? 'http://127.0.0.1:5000/api/admin/payments' : '/api/admin/payments';
+      const apiUrl = '/api/admin/payments';
       const res = await axios.get(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
       setAdminPayments(res.data);
     } catch (err) {
@@ -186,7 +186,7 @@ const App = () => {
   const handleSave = async () => {
     if (!result) return;
     try {
-      const apiUrl = import.meta.env.MODE === 'development' ? 'http://127.0.0.1:5000/api/ocr/save' : '/api/ocr/save';
+      const apiUrl = '/api/ocr/save';
       await axios.post(apiUrl, {
         token,
         fileName: file?.name || 'scan_muv.txt',
@@ -236,7 +236,7 @@ const App = () => {
     e.preventDefault();
     setError(null);
     const endpoint = authMode === 'login' ? 'login' : 'register';
-    const apiUrl = import.meta.env.MODE === 'development' ? `http://127.0.0.1:5000/api/auth/${endpoint}` : `/api/auth/${endpoint}`;
+    const apiUrl = `/api/auth/${endpoint}`;
 
     // Normalize and trim data
     const payload = {
@@ -264,7 +264,7 @@ const App = () => {
 
   const deleteRecord = async (id) => {
     try {
-      const apiUrl = import.meta.env.MODE === 'development' ? `http://127.0.0.1:5000/api/ocr/${id}` : `/api/ocr/${id}`;
+      const apiUrl = `/api/ocr/${id}`;
       await axios.delete(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
       fetchHistory();
     } catch (err) {
@@ -278,7 +278,7 @@ const App = () => {
       'Tem a certeza que deseja apagar este utilizador e todos os seus dados? Esta ação é irreversível.',
       async () => {
         try {
-          const apiUrl = import.meta.env.MODE === 'development' ? `http://127.0.0.1:5000/api/admin/user/${id}` : `/api/admin/user/${id}`;
+          const apiUrl = `/api/admin/user/${id}`;
           await axios.delete(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
           fetchAdminData();
           showNotify('Utilizador removido com sucesso');
@@ -291,13 +291,24 @@ const App = () => {
 
   const approvePayment = async (id, status, subscription) => {
     try {
-      const apiUrl = import.meta.env.MODE === 'development' ? `http://127.0.0.1:5000/api/admin/payment/${id}` : `/api/admin/payment/${id}`;
+      const apiUrl = `/api/admin/payment/${id}`;
       await axios.patch(apiUrl, { status, subscription }, { headers: { Authorization: `Bearer ${token}` } });
       showNotify(`Pagamento ${status === 'approved' ? 'Aprovado' : 'Rejeitado'}`);
       fetchAdminData();
       fetchAdminPayments();
     } catch (err) {
       showNotify('Erro ao processar pagamento', 'error');
+    }
+  };
+
+  const updateUser = async (id, data) => {
+    try {
+      const apiUrl = `/api/admin/user/${id}`;
+      await axios.patch(apiUrl, data, { headers: { Authorization: `Bearer ${token}` } });
+      showNotify('Utilizador atualizado com sucesso');
+      fetchAdminData();
+    } catch (err) {
+      showNotify('Erro ao atualizar utilizador', 'error');
     }
   };
 
@@ -477,6 +488,7 @@ const App = () => {
                   adminUsers={adminUsers}
                   approvePayment={approvePayment}
                   deleteUser={deleteUser}
+                  updateUser={updateUser}
                   activeTab={activeTab}
                   setActiveTab={setActiveTab}
                 />
@@ -1262,7 +1274,7 @@ const DashboardOverlay = ({ user, userHistory, deleteRecord, setResult, setActiv
 };
 
 
-const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, deleteUser, activeTab, setActiveTab }) => {
+const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, deleteUser, updateUser, activeTab, setActiveTab }) => {
   const sidebarItems = [
     { id: 'home', label: 'Estatísticas', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'payments', label: 'Verificações', icon: <Shield className="w-4 h-4" /> },
@@ -1345,17 +1357,52 @@ const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, d
         {activeTab === 'users' && (
           <div className="flex flex-col gap-6">
             <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-2 text-main">Base de Utilizadores Registados</h4>
-            <div className="grid lg:grid-cols-2 gap-4 max-h-[1000px] overflow-y-auto custom-scrollbar pr-4">
+            <div className="grid gap-4 max-h-[1000px] overflow-y-auto custom-scrollbar pr-4">
               {adminUsers.map(u => (
-                <div key={u._id} className="glass p-6 flex items-center justify-between hover:border-blue-500/20 transition-all">
-                  <div>
+                <div key={u._id} className="glass p-6 flex items-center justify-between hover:border-blue-500/20 transition-all gap-8">
+                  <div className="flex-1 min-w-[150px]">
                     <h5 className="font-black text-sm">{u.name || 'Sem Nome'}</h5>
-                    <p className="text-[10px] font-bold text-muted uppercase tracking-widest">{u.email} • {u.role}</p>
+                    <p className="text-[10px] font-bold text-muted uppercase tracking-widest">{u.email}</p>
                     {u.companyName && <p className="text-[8px] font-black text-blue-500 uppercase mt-1">{u.companyName}</p>}
                   </div>
-                  {u.email !== 'admin@orcmuv.com' && (
-                    <button onClick={() => deleteUser(u._id)} className="p-3 text-red-500 bg-red-500/5 hover:bg-red-500/10 rounded-lg transition-all"><Trash2 className="w-4 h-4" /></button>
-                  )}
+
+                  <div className="flex items-center gap-6">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[8px] font-black uppercase opacity-40">Cargo</span>
+                      <select
+                        value={u.role}
+                        onChange={(e) => updateUser(u._id, { role: e.target.value })}
+                        className="bg-main/5 border border-main/10 rounded px-2 py-1 text-[9px] font-black text-white focus:border-blue-500 outline-none"
+                      >
+                        <option value="user" className="bg-black">Utilizador (User)</option>
+                        <option value="admin" className="bg-black">Administrador (Admin)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[8px] font-black uppercase opacity-40">Plano Ativo</span>
+                      <select
+                        value={u.subscription}
+                        onChange={(e) => updateUser(u._id, { subscription: e.target.value })}
+                        className="bg-main/5 border border-main/10 rounded px-2 py-1 text-[9px] font-black text-white focus:border-blue-500 outline-none"
+                      >
+                        <option value="LOCAL" className="bg-black">LOCAL (Grátis)</option>
+                        <option value="HYPER" className="bg-black">HYPER (Pro)</option>
+                        <option value="NEURAL" className="bg-black">NEURAL (Enterprise)</option>
+                        <option value="GLOBAL NEURAL" className="bg-black">GLOBAL NEURAL</option>
+                      </select>
+                    </div>
+
+                    {u.email !== 'admin@orcmuv.com' && (
+                      <button
+                        onClick={() => deleteUser(u._id)}
+                        className="p-3 text-red-500 bg-red-500/5 hover:bg-red-500/10 rounded-lg transition-all self-end"
+                        title="Apagar Utilizador"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

@@ -124,26 +124,46 @@ const isAdmin = async (req, res, next) => {
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { email, password, name, companyName } = req.body;
+        if (!email || !password) return res.status(400).json({ error: 'Email e password são obrigatórios' });
+
+        const existingUser = await User.findOne({ email: email.toLowerCase() });
+        if (existingUser) return res.status(400).json({ error: 'Este email já está registado' });
+
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = new User({ email: email.toLowerCase(), password: hashedPassword, name, companyName });
         await newUser.save();
         res.status(201).json({ message: 'Conta criada com sucesso!' });
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao criar conta. Email já pode estar em uso.' });
+        console.error('Registration Error:', error);
+        res.status(500).json({ error: 'Erro interno ao criar conta' });
     }
 });
 
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
+        if (!email || !password) return res.status(400).json({ error: 'Credenciais incompletas' });
+
         const user = await User.findOne({ email: email.toLowerCase() });
-        if (!user || !(await bcrypt.compare(password, user.password))) {
-            return res.status(401).json({ error: 'Credenciais inválidas' });
-        }
+        if (!user) return res.status(401).json({ error: 'Utilizador não encontrado' });
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(401).json({ error: 'Palavra-passe incorreta' });
+
         const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ token, user: { email: user.email, name: user.name, companyName: user.companyName, subscription: user.subscription, role: user.role } });
+        res.json({
+            token,
+            user: {
+                email: user.email,
+                name: user.name,
+                companyName: user.companyName,
+                subscription: user.subscription,
+                role: user.role
+            }
+        });
     } catch (error) {
-        res.status(500).json({ error: 'Erro no servidor' });
+        console.error('Login Error:', error);
+        res.status(500).json({ error: 'Erro no servidor durante a autenticação' });
     }
 });
 
