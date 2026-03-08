@@ -66,7 +66,7 @@ const Payment = mongoose.model('Payment', PaymentSchema);
 // Admin Seed function
 const seedAdmin = async () => {
     try {
-        const adminEmail = 'admin@orcmuv.com';
+        const adminEmail = 'admin@ocrmuv.com';
         const hashedPassword = await bcrypt.hash('@Admin123@', 10);
         const existingAdmin = await User.findOne({ email: adminEmail });
 

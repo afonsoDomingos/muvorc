@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useDropzone } from 'react-dropzone';
-import { processImage, processPdf } from './services/OCRService';
+import { processImage, processPdf, warmUp } from './services/OCRService';
 import axios from 'axios';
 import { jsPDF } from 'jspdf';
 import { pack, Document, Packer, Paragraph, TextRun } from 'docx';
@@ -65,6 +65,7 @@ const App = () => {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    warmUp(); // Pré-aquecer motor neural
   }, [theme]);
 
   useEffect(() => {
@@ -451,8 +452,13 @@ const App = () => {
 
       <AnimatePresence>
         {activeOverlay && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={`fixed inset-0 z-[100] ${theme === 'dark' ? 'bg-black/90' : 'bg-white/95'} backdrop-blur-3xl pt-24 px-8 md:px-20 overflow-y-auto custom-scrollbar transition-all duration-500`}>
-            <div className="max-w-[1400px] mx-auto pb-20">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed inset-0 z-[100] ${theme === 'dark' ? 'bg-black/90' : 'bg-white/95'} backdrop-blur-3xl pt-16 px-8 md:px-20 overflow-hidden custom-scrollbar transition-all duration-500 flex flex-col`}
+          >
+            <div className="max-w-[1400px] mx-auto w-full flex-1 flex flex-col pb-10">
               <button
                 onClick={() => {
                   if (activeOverlay === 'admin') setActiveOverlay('dashboard');
@@ -1123,33 +1129,33 @@ const Sidebar = ({ items, activeTab, setActiveTab }) => (
 // --- Stable Overlay Components ---
 
 const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth, error }) => (
-  <div className="flex flex-col lg:flex-row items-center justify-center gap-16 pt-5 pb-10 max-w-5xl mx-auto">
+  <div className="flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-16 flex-1 py-2 max-w-5xl mx-auto w-full h-full overflow-hidden">
     {/* Left Side: Brand & Benefits */}
-    <div className="flex flex-col gap-8 flex-1 max-w-md hidden lg:flex">
+    <div className="flex flex-col gap-6 flex-1 max-w-md hidden lg:flex">
       <div className="flex flex-col gap-2">
-        <h2 className="text-6xl font-black text-white tracking-tighter leading-none">
+        <h2 className="text-5xl font-black text-white tracking-tighter leading-none">
           {authMode === 'login' ? 'BEM-VINDO DE VOLTA.' : 'JUNTE-SE À ELITE.'}
         </h2>
-        <div className="h-1.5 w-24 bg-blue-500 rounded-full mt-4 shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+        <div className="h-1 w-16 bg-blue-500 rounded-full mt-2 shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
       </div>
 
-      <p className="text-muted text-sm leading-relaxed font-bold uppercase tracking-wider opacity-60">
+      <p className="text-muted text-[11px] leading-relaxed font-bold uppercase tracking-wider opacity-60">
         Aceda ao motor neural de processamento documental mais avançado do mercado. 100% privado, 100% industrial.
       </p>
 
-      <div className="grid gap-6">
+      <div className="grid gap-4">
         {[
-          { icon: <Shield className="w-5 h-5" />, title: 'Privacy First', desc: 'Dados locais. Zero fugas.' },
-          { icon: <Zap className="w-5 h-5" />, title: 'Turbo Neural', desc: 'OCR em milissegundos.' },
-          { icon: <Database className="w-5 h-5" />, title: 'Smart Archive', desc: 'Gestão cloud inteligente.' }
+          { icon: <Shield className="w-4 h-4" />, title: 'Privacy First', desc: 'Dados locais. Zero fugas.' },
+          { icon: <Zap className="w-4 h-4" />, title: 'Turbo Neural', desc: 'OCR em milissegundos.' },
+          { icon: <Database className="w-4 h-4" />, title: 'Smart Archive', desc: 'Gestão cloud inteligente.' }
         ].map(benefit => (
           <div key={benefit.title} className="flex gap-4 items-center group">
-            <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-blue-500 border border-white/5 group-hover:border-blue-500/30 transition-all shadow-xl">
+            <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-blue-500 border border-white/5 group-hover:border-blue-500/30 transition-all shadow-xl">
               {benefit.icon}
             </div>
             <div>
-              <h4 className="text-[11px] font-black text-white uppercase tracking-widest">{benefit.title}</h4>
-              <p className="text-[9px] text-muted font-bold uppercase opacity-50">{benefit.desc}</p>
+              <h4 className="text-[10px] font-black text-white uppercase tracking-widest">{benefit.title}</h4>
+              <p className="text-[8px] text-muted font-bold uppercase opacity-50">{benefit.desc}</p>
             </div>
           </div>
         ))}
@@ -1157,7 +1163,7 @@ const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth,
     </div>
 
     {/* Right Side: Auth Form */}
-    <div className="glass p-8 md:p-12 w-full max-w-md flex flex-col gap-8 border-white/10 border relative overflow-hidden group/form">
+    <div className="glass p-6 md:p-10 w-full max-w-md flex flex-col gap-6 border-white/10 border relative overflow-hidden group/form">
       {/* Decorative background scan line */}
       <motion.div
         animate={{ left: ['-100%', '200%'] }}
@@ -1170,29 +1176,29 @@ const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth,
           <div className="w-1 h-1 bg-blue-500 rounded-full animate-ping" />
           <span className="text-[8px] font-black text-blue-500 uppercase tracking-[0.4em]">Protocolo {authMode === 'login' ? '01-LOGIN' : '02-REGISTO'}</span>
         </div>
-        <h3 className="text-3xl font-black text-white tracking-tighter uppercase italic leading-none">
+        <h3 className="text-2xl font-black text-white tracking-tighter uppercase italic leading-none">
           {authMode === 'login' ? 'Terminal de Acesso' : 'Solicitar Credenciais'}
         </h3>
-        <p className="text-[9px] font-black text-muted uppercase tracking-[0.4em] mt-1">
+        <p className="text-[8px] font-black text-muted uppercase tracking-[0.4em] mt-1">
           {authMode === 'login' ? 'Insira os seus dados de operador para autenticação' : 'Preencha o formulário para iniciar o protocolo de entrada'}
         </p>
       </div>
 
-      <form onSubmit={handleAuth} className="flex flex-col gap-5 relative z-10">
+      <form onSubmit={handleAuth} className="flex flex-col gap-4 relative z-10">
         {authMode === 'register' && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <label htmlFor="companyName" className="text-[9px] font-black uppercase tracking-[0.3em] text-muted ml-1">Organização Enterprise</label>
               <div className="relative">
                 <Building2 className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
-                <input id="companyName" required type="text" placeholder="NOME DA EMPRESA" className="panel w-full py-4 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.companyName} onChange={e => setAuthData({ ...authData, companyName: e.target.value })} />
+                <input id="companyName" required type="text" placeholder="NOME DA EMPRESA" className="panel w-full py-3.5 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.companyName} onChange={e => setAuthData({ ...authData, companyName: e.target.value })} />
               </div>
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="representative" className="text-[9px] font-black uppercase tracking-[0.3em] text-muted ml-1">Identidade do Operador</label>
               <div className="relative">
                 <User className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
-                <input id="representative" required type="text" placeholder="NOME COMPLETO" className="panel w-full py-4 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.name} onChange={e => setAuthData({ ...authData, name: e.target.value })} />
+                <input id="representative" required type="text" placeholder="NOME COMPLETO" className="panel w-full py-3.5 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.name} onChange={e => setAuthData({ ...authData, name: e.target.value })} />
               </div>
             </div>
           </motion.div>
@@ -1202,7 +1208,7 @@ const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth,
           <label htmlFor="authEmail" className="text-[9px] font-black uppercase tracking-[0.3em] text-muted ml-1">Canal de Comunicação (Email)</label>
           <div className="relative">
             <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
-            <input id="authEmail" required type="email" placeholder="ADMIN@EMPRESA.COM" className="panel w-full py-4 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.email} onChange={e => setAuthData({ ...authData, email: e.target.value })} />
+            <input id="authEmail" required type="email" placeholder="ADMIN@EMPRESA.COM" className="panel w-full py-3.5 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.email} onChange={e => setAuthData({ ...authData, email: e.target.value })} />
           </div>
         </div>
 
@@ -1210,7 +1216,7 @@ const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth,
           <label htmlFor="authPassword" className="text-[9px] font-black uppercase tracking-[0.3em] text-muted ml-1">Chave Encriptada</label>
           <div className="relative">
             <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
-            <input id="authPassword" required type="password" placeholder="••••••••" className="panel w-full py-4 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.password} onChange={e => setAuthData({ ...authData, password: e.target.value })} />
+            <input id="authPassword" required type="password" placeholder="••••••••" className="panel w-full py-3.5 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.password} onChange={e => setAuthData({ ...authData, password: e.target.value })} />
           </div>
         </div>
 
@@ -1220,7 +1226,7 @@ const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth,
           </motion.div>
         )}
 
-        <button type="submit" className="btn-tesla-blue py-5 mt-4 text-[10px] font-black uppercase tracking-[0.4em] shadow-[0_20px_40px_rgba(59,130,246,0.25)] hover:shadow-blue-500/40 transition-all active:scale-95 group">
+        <button type="submit" className="btn-tesla-blue py-4 mt-2 text-[10px] font-black uppercase tracking-[0.4em] shadow-[0_20px_40px_rgba(59,130,246,0.25)] hover:shadow-blue-500/40 transition-all active:scale-95 group">
           <span className="flex items-center justify-center gap-3">
             {authMode === 'login' ? 'AUTENTICAR NO SISTEMA' : 'SOLICITAR ACESSO NEURAL'}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -1257,16 +1263,16 @@ const DashboardOverlay = ({ user, userHistory, deleteRecord, setResult, setActiv
     <div className="flex gap-12">
       <Sidebar items={sidebarItems} activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="flex-1 flex flex-col gap-12">
-        <div className="flex justify-between items-end border-b border-gray-500/10 pb-10">
+      <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+        <div className="flex justify-between items-end border-b border-gray-500/10 pb-6">
           <div>
-            <h2 className="text-5xl font-black tracking-tighter mb-2">{sidebarItems.find(i => i.id === activeTab)?.label}.</h2>
-            <p className="text-muted text-sm font-bold">
-              Olá, {user?.name || 'Utilizador'}.
-              {user?.companyName && <span className="opacity-50"> de {user.companyName}</span>}.
+            <h2 className="text-3xl font-black tracking-tighter mb-1">{sidebarItems.find(i => i.id === activeTab)?.label}.</h2>
+            <p className="text-muted text-[10px] font-bold uppercase tracking-widest">
+              Operador: {user?.name || 'Utilizador'}
+              {user?.companyName && <span className="opacity-50"> // {user.companyName}</span>}
             </p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             {user?.role === 'admin' && (
               <button onClick={() => setActiveOverlay('admin')} className="flex items-center gap-2 text-xs font-black text-blue-500 bg-blue-500/5 px-6 py-3 rounded-lg hover:bg-blue-500/10 transition-all border border-blue-500/20">
                 <Settings className="w-4 h-4" /> ADMINISTRAÇÃO
@@ -1279,31 +1285,31 @@ const DashboardOverlay = ({ user, userHistory, deleteRecord, setResult, setActiv
         </div>
 
         {activeTab === 'home' && (
-          <div className="grid lg:grid-cols-12 gap-10">
-            <div className="lg:col-span-4 flex flex-col gap-8">
-              <div className="glass p-8 flex flex-col gap-4 border-blue-500/10 border">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Subscrição Atual</h4>
-                <h3 className="text-3xl font-black text-main">{user?.subscription}</h3>
+          <div className="grid lg:grid-cols-12 gap-8 flex-1 overflow-hidden">
+            <div className="lg:col-span-4 flex flex-col gap-6">
+              <div className="glass p-6 flex flex-col gap-3 border-blue-500/10 border">
+                <h4 className="text-[9px] font-black uppercase tracking-[0.4em] opacity-40">Subscrição Atual</h4>
+                <h3 className="text-2xl font-black text-main">{user?.subscription}</h3>
                 <div className="w-full h-1 bg-gray-500/10 rounded-full overflow-hidden"><div className="h-full bg-blue-500 w-1/4" /></div>
-                <p className="text-[10px] font-bold text-muted uppercase">25% do limite diário utilizado</p>
-                <button onClick={() => setActiveOverlay('planos')} className="btn-tesla-blue py-4 mt-2 text-[10px] font-black uppercase">Fazer Upgrade</button>
+                <p className="text-[9px] font-bold text-muted uppercase tracking-tighter">25% do limite diário utilizado</p>
+                <button onClick={() => setActiveOverlay('planos')} className="btn-tesla-blue py-3.5 mt-2 text-[10px] font-black uppercase">Fazer Upgrade</button>
               </div>
-              <div className="panel p-8 flex flex-col gap-2">
-                <h4 className="text-[10px] font-black uppercase tracking-widest opacity-40">Resumo Semanal</h4>
+              <div className="panel p-6 flex flex-col gap-2">
+                <h4 className="text-[9px] font-black uppercase tracking-widest opacity-40">Resumo Semanal</h4>
                 <p className="text-xs font-bold text-main">12 Documentos Processados</p>
-                <p className="text-[9px] text-muted uppercase">Economia de 4.5h de trabalho</p>
+                <p className="text-[8px] text-muted uppercase">Economia de 4.5h de trabalho</p>
               </div>
             </div>
-            <div className="lg:col-span-8 grid grid-cols-2 gap-6">
-              <div onClick={() => setActiveTab('archive')} className="glass p-8 flex flex-col gap-4 hover:border-blue-500/30 transition-all cursor-pointer">
-                <Search className="w-6 h-6 text-blue-500" />
-                <h4 className="font-black text-sm uppercase italic">Pesquisa Inteligente</h4>
-                <p className="text-[10px] text-muted leading-relaxed">Procure em todos os seus documentos arquivados usando palavras-chave ou datas.</p>
+            <div className="lg:col-span-8 grid grid-cols-2 gap-4 h-fit">
+              <div onClick={() => setActiveTab('archive')} className="glass p-6 flex flex-col gap-3 hover:border-blue-500/30 transition-all cursor-pointer">
+                <Search className="w-5 h-5 text-blue-500" />
+                <h4 className="font-black text-xs uppercase italic">Pesquisa Inteligente</h4>
+                <p className="text-[9px] text-muted leading-relaxed uppercase tracking-tighter">Procure em todos os seus documentos arquivados usando palavras-chave ou datas.</p>
               </div>
-              <div onClick={() => setActiveTab('archive')} className="glass p-8 flex flex-col gap-4 hover:border-blue-500/30 transition-all cursor-pointer">
-                <Download className="w-6 h-6 text-blue-500" />
-                <h4 className="font-black text-sm uppercase italic">Exportação Batch</h4>
-                <p className="text-[10px] text-muted leading-relaxed">Exporte os dados extraídos para Excel, CSV ou formatados para o seu ERP.</p>
+              <div onClick={() => setActiveTab('archive')} className="glass p-6 flex flex-col gap-3 hover:border-blue-500/30 transition-all cursor-pointer">
+                <Download className="w-5 h-5 text-blue-500" />
+                <h4 className="font-black text-xs uppercase italic">Exportação Batch</h4>
+                <p className="text-[9px] text-muted leading-relaxed uppercase tracking-tighter">Exporte os dados extraídos para Excel, CSV ou formatados para o seu ERP.</p>
               </div>
             </div>
           </div>
@@ -1375,33 +1381,35 @@ const DashboardOverlay = ({ user, userHistory, deleteRecord, setResult, setActiv
               <button onClick={() => showNotify('Apenas disponível no Plano GLOBAL', 'error')} className="btn-tesla-blue px-6 py-3 text-[10px] font-black uppercase">Adicionar Membro</button>
             </div>
 
-            <div className="glass overflow-hidden border-main/5">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-main/5 text-[9px] font-black uppercase tracking-widest text-muted">
-                    <th className="px-8 py-4">Colaborador</th>
-                    <th className="px-8 py-4">Cargo</th>
-                    <th className="px-8 py-4">Acessos</th>
-                    <th className="px-8 py-4">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-main/5">
-                  <tr className="text-xs font-bold text-main hover:bg-main/5 transition-colors">
-                    <td className="px-8 py-6 flex items-center gap-4">
-                      <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 text-[10px]">{user?.name?.[0]}</div>
-                      <div>
-                        <p>{user?.name} (Você)</p>
-                        <p className="text-[9px] text-muted uppercase tracking-tighter">{user?.email}</p>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6 opacity-60 uppercase tracking-widest text-[9px]">Representante Legal</td>
-                    <td className="px-8 py-6"><span className="px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[9px] uppercase">Acesso Total</span></td>
-                    <td className="px-8 py-6 text-muted">---</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div className="p-10 text-center opacity-30">
-                <p className="text-[10px] font-black uppercase tracking-widest italic">Upgrade necessário para adicionar mais membros</p>
+            <div className="glass overflow-hidden border-main/5 flex-1">
+              <div className="overflow-y-auto max-h-[calc(100vh-350px)] custom-scrollbar">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-main/5 text-[9px] font-black uppercase tracking-widest text-muted sticky top-0 bg-black z-10">
+                      <th className="px-8 py-4">Colaborador</th>
+                      <th className="px-8 py-4">Cargo</th>
+                      <th className="px-8 py-4">Acessos</th>
+                      <th className="px-8 py-4">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-main/5">
+                    <tr className="text-[11px] font-bold text-main hover:bg-main/5 transition-colors">
+                      <td className="px-8 py-4 flex items-center gap-4">
+                        <div className="w-7 h-7 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 text-[10px]">{user?.name?.[0]}</div>
+                        <div>
+                          <p>{user?.name} (Você)</p>
+                          <p className="text-[8px] text-muted uppercase tracking-tighter opacity-50">{user?.email}</p>
+                        </div>
+                      </td>
+                      <td className="px-8 py-4 opacity-60 uppercase tracking-widest text-[8px]">Representante Legal</td>
+                      <td className="px-8 py-4"><span className="px-2 py-0.5 bg-green-500/10 text-green-500 rounded-full text-[8px] uppercase">Acesso Total</span></td>
+                      <td className="px-8 py-4 text-muted">---</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-6 text-center opacity-30 border-t border-main/5">
+                <p className="text-[9px] font-black uppercase tracking-widest italic tracking-[0.2em]">Upgrade necessário para adicionar mais membros</p>
               </div>
             </div>
           </div>
@@ -1573,7 +1581,7 @@ const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, d
                       </select>
                     </div>
 
-                    {u.email !== 'admin@orcmuv.com' && (
+                    {u.email !== 'admin@ocrmuv.com' && (
                       <button
                         onClick={() => deleteUser(u._id)}
                         className="p-3 text-red-500 bg-red-500/5 hover:bg-red-500/10 rounded-lg transition-all self-end"
@@ -1719,7 +1727,7 @@ const SupportOverlay = ({ setActiveOverlay }) => (
     <div className="grid md:grid-cols-3 gap-6">
       <div className="glass p-8 flex flex-col gap-6">
         <Mail className="text-blue-500 w-8 h-8" />
-        <div><h4 className="font-black text-sm text-main">Email Industrial</h4><p className="text-[10px] font-bold text-muted mt-1 uppercase tracking-widest">enterprise@orcmuv.com</p></div>
+        <div><h4 className="font-black text-sm text-main">Email Industrial</h4><p className="text-[10px] font-bold text-muted mt-1 uppercase tracking-widest">enterprise@ocrmuv.com</p></div>
         <button className="btn-tesla-blue py-3 text-[10px] font-black uppercase">Enviar Ticket</button>
       </div>
       <div className="glass p-8 flex flex-col gap-6">

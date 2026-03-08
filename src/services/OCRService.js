@@ -4,28 +4,52 @@ import * as pdfjsLib from 'pdfjs-dist';
 // Configurar o worker do PDF.js (CDN fixo para compatibilidade)
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs`;
 
+let persistentWorker = null;
+
 const getWorker = async (onProgress) => {
-    const worker = await createWorker('por+eng', 1, {
+    if (persistentWorker) {
+        // Reset progress logger
+        persistentWorker.setParameters({
+            logger: m => {
+                if (m.status === 'recognizing text') {
+                    onProgress(Math.floor(m.progress * 100));
+                }
+            }
+        });
+        return persistentWorker;
+    }
+
+    console.log('[NEURAL] Inicializando motor de reconhecimento...');
+    persistentWorker = await createWorker('por+eng', 1, {
         logger: m => {
             if (m.status === 'recognizing text') {
                 onProgress(Math.floor(m.progress * 100));
             }
         },
-        errorHandler: err => console.error('Tesseract Worker Error:', err)
+        cachePath: 'neural-cache',
     });
-    return worker;
+    return persistentWorker;
+};
+
+export const warmUp = async () => {
+    try {
+        await getWorker(() => { });
+        console.log('[NEURAL] Motor aquecido e pronto.');
+    } catch (e) {
+        console.error('[NEURAL] Erro no pré-aquecimento:', e);
+    }
 };
 
 export const processImage = async (imageFile, onProgress) => {
     let worker;
     try {
+        console.time('[NEURAL] OCR Imagem');
         worker = await getWorker(onProgress);
         const { data: { text } } = await worker.recognize(imageFile);
-        await worker.terminate();
+        console.timeEnd('[NEURAL] OCR Imagem');
         return text;
     } catch (error) {
         console.error('OCR Error:', error);
-        if (worker) await worker.terminate();
         throw new Error('Falha ao processar imagem. Verifique o formato e a clareza do ficheiro.');
     }
 };
@@ -33,41 +57,44 @@ export const processImage = async (imageFile, onProgress) => {
 export const processPdf = async (pdfFile, onProgress) => {
     let worker;
     try {
+        console.time('[NEURAL] OCR PDF');
         const arrayBuffer = await pdfFile.arrayBuffer();
         const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
         const pdf = await loadingTask.promise;
         const numPages = pdf.numPages;
         let fullText = '';
 
-        // Criar um único worker para todas as páginas (mais rápido)
-        worker = await getWorker((p) => {
-            // Progresso individual será tratado dentro do loop
-        });
+        worker = await getWorker(() => { });
 
         for (let i = 1; i <= numPages; i++) {
+            console.log(`[NEURAL] Processando página ${i}/${numPages}`);
             const page = await pdf.getPage(i);
-            const viewport = page.getViewport({ scale: 2.0 });
+
+            // Reduzir um pouco o scale para 1.5 para maior velocidade sem perda crítica de precisão
+            const viewport = page.getViewport({ scale: 1.5 });
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
             canvas.height = viewport.height;
             canvas.width = viewport.width;
 
             await page.render({ canvasContext: context, viewport }).promise;
-            const imageData = canvas.toDataURL('image/png');
+            const imageData = canvas.toDataURL('image/jpeg', 0.85); // JPEG é mais leve que PNG
 
             const { data: { text } } = await worker.recognize(imageData);
 
             // Atualizar progresso global
             onProgress(Math.floor((i / numPages) * 100));
-
             fullText += `--- Página ${i} ---\n${text}\n\n`;
+
+            // Limpeza de canvas para libertar memória
+            canvas.width = 0;
+            canvas.height = 0;
         }
 
-        await worker.terminate();
+        console.timeEnd('[NEURAL] OCR PDF');
         return fullText;
     } catch (error) {
         console.error('PDF OCR Error:', error);
-        if (worker) await worker.terminate();
-        throw new Error('Falha no motor neural. Garante que o PDF não está protegido ou corrompido.');
+        throw new Error('Falha no motor neural. Garante que o PDF não está protegido.');
     }
 };

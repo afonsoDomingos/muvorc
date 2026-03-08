@@ -22,7 +22,7 @@ async function verify() {
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('Connected to DB');
 
-        const user = await User.findOne({ email: 'admin@orcmuv.com' });
+        const user = await User.findOne({ email: 'admin@ocrmuv.com' });
         if (user) {
             console.log('User Found:');
             console.log('- Email:', user.email);
