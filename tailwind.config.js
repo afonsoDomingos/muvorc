@@ -7,13 +7,17 @@ export default {
   theme: {
     extend: {
       colors: {
+        main: 'var(--text-main)',
+        secondary: 'var(--text-secondary)',
+        muted: 'var(--text-muted)',
+        accent: 'var(--accent-blue)',
         brand: {
           50: '#f8fafc',
           100: '#f1f5f9',
           200: '#e2e8f0',
           300: '#cbd5e1',
           400: '#94a3b8',
-          500: '#64748b',
+          500: '#3d69e1', // Usando o azul da marca
           600: '#475569',
           700: '#334155',
           800: '#1e293b',

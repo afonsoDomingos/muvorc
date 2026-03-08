@@ -217,6 +217,34 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
     }
 });
 
+app.get('/api/admin/users', authenticate, isAdmin, async (req, res) => {
+    try {
+        const users = await User.find().select('-password').sort({ createdAt: -1 });
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao carregar utilizadores' });
+    }
+});
+
+app.patch('/api/admin/user/:id', authenticate, isAdmin, async (req, res) => {
+    try {
+        const { role, subscription } = req.body;
+        const updated = await User.findByIdAndUpdate(req.params.id, { role, subscription }, { new: true });
+        res.json({ message: 'Utilizador atualizado', data: updated });
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao atualizar utilizador' });
+    }
+});
+
+app.delete('/api/admin/user/:id', authenticate, isAdmin, async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Utilizador removido' });
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao apagar utilizador' });
+    }
+});
+
 app.get('/api/admin/payments', authenticate, isAdmin, async (req, res) => {
     try {
         const payments = await Payment.find().populate('userId', 'email name').sort({ createdAt: -1 });

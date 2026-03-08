@@ -50,6 +50,8 @@ const App = () => {
   const videoRef = React.useRef(null);
   const [notifications, setNotifications] = useState([]);
   const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null });
+  const [currentRecordId, setCurrentRecordId] = useState(null);
+  const [activeImage, setActiveImage] = useState(null);
 
   const showNotify = (message, type = 'success') => {
     const id = Date.now();
@@ -162,6 +164,7 @@ const App = () => {
     setLoading(true);
     setProgress(0);
     setError(null);
+    setCurrentRecordId(null); // Reset when starting new process
     try {
       let text = '';
       if (file.type === 'application/pdf') {
@@ -187,17 +190,39 @@ const App = () => {
   const handleSave = async () => {
     if (!result) return;
     try {
-      const apiUrl = '/api/ocr/save';
-      await axios.post(apiUrl, {
-        token,
-        fileName: file?.name || 'scan_muv.txt',
-        fileSize: file?.size || 0,
-        extractedText: result,
-        folder: folderName
+      setLoading(true);
+      const apiUrl = currentRecordId ? `/api/ocr/${currentRecordId}` : '/api/ocr/save';
+      const method = currentRecordId ? 'put' : 'post';
+
+      // If it's a new scan, we might want to send the image base64
+      let imageBase64 = null;
+      if (!currentRecordId && file) {
+        const reader = new FileReader();
+        imageBase64 = await new Promise((resolve) => {
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      await axios({
+        method,
+        url: apiUrl,
+        data: {
+          token,
+          fileName: file?.name || 'scan_muv.txt',
+          fileSize: file?.size || 0,
+          extractedText: result,
+          folder: folderName,
+          imageBase64
+        }
       });
-      showNotify(`Arquivo Guardado em: ${folderName.toUpperCase()}`);
+
+      showNotify(currentRecordId ? 'Arquivo Atualizado!' : `Arquivo Guardado em: ${folderName.toUpperCase()}`);
+      if (!currentRecordId) fetchHistory();
     } catch (saveErr) {
       showNotify('Erro ao sincronizar histórico', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -489,6 +514,10 @@ const App = () => {
                   logout={logout}
                   activeTab={activeTab}
                   setActiveTab={setActiveTab}
+                  setActiveImage={setActiveImage}
+                  setFolderName={setFolderName}
+                  setFile={setFile}
+                  setCurrentRecordId={setCurrentRecordId}
                 />
               )}
               {activeOverlay === 'admin' && (
@@ -897,7 +926,32 @@ const App = () => {
         settings={confirmModal}
         onClose={() => setConfirmModal({ ...confirmModal, show: false })}
       />
-    </div >
+      <AnimatePresence>
+        {activeImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setActiveImage(null)}
+            className="fixed inset-0 z-[500] bg-black/95 flex items-center justify-center p-10 cursor-pointer"
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className="relative max-w-full max-h-full"
+            >
+              <img src={activeImage} alt="Original document" className="max-w-full max-h-[90vh] rounded-lg shadow-2xl" />
+              <button
+                className="absolute -top-12 right-0 text-white flex items-center gap-2 text-[10px] font-black uppercase"
+                onClick={() => setActiveImage(null)}
+              >
+                <X className="w-6 h-6" /> Fechar Visualização
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
 
@@ -976,10 +1030,10 @@ const NotifyContainer = ({ notifications }) => (
           </div>
 
           <div className="flex flex-col gap-1 relative z-10">
-            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-main">
               {n.type === 'error' ? 'ALERTA DE SISTEMA' : 'NOTIFICAÇÃO NEURAL'}
             </span>
-            <span className="text-[10px] font-bold text-white/60 lowercase tracking-wide first-letter:uppercase">
+            <span className="text-[10px] font-bold text-secondary lowercase tracking-wide first-letter:uppercase">
               {n.message}
             </span>
           </div>
@@ -1133,7 +1187,7 @@ const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth,
     {/* Left Side: Brand & Benefits */}
     <div className="flex flex-col gap-6 flex-1 max-w-md hidden lg:flex">
       <div className="flex flex-col gap-2">
-        <h2 className="text-5xl font-black text-white tracking-tighter leading-none">
+        <h2 className="text-5xl font-black text-main tracking-tighter leading-none">
           {authMode === 'login' ? 'BEM-VINDO DE VOLTA.' : 'JUNTE-SE À ELITE.'}
         </h2>
         <div className="h-1 w-16 bg-blue-500 rounded-full mt-2 shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
@@ -1154,7 +1208,7 @@ const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth,
               {benefit.icon}
             </div>
             <div>
-              <h4 className="text-[10px] font-black text-white uppercase tracking-widest">{benefit.title}</h4>
+              <h4 className="text-[10px] font-black text-main uppercase tracking-widest">{benefit.title}</h4>
               <p className="text-[8px] text-muted font-bold uppercase opacity-50">{benefit.desc}</p>
             </div>
           </div>
@@ -1176,7 +1230,7 @@ const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth,
           <div className="w-1 h-1 bg-blue-500 rounded-full animate-ping" />
           <span className="text-[8px] font-black text-blue-500 uppercase tracking-[0.4em]">Protocolo {authMode === 'login' ? '01-LOGIN' : '02-REGISTO'}</span>
         </div>
-        <h3 className="text-2xl font-black text-white tracking-tighter uppercase italic leading-none">
+        <h3 className="text-2xl font-black text-main tracking-tighter uppercase italic leading-none">
           {authMode === 'login' ? 'Terminal de Acesso' : 'Solicitar Credenciais'}
         </h3>
         <p className="text-[8px] font-black text-muted uppercase tracking-[0.4em] mt-1">
@@ -1191,14 +1245,14 @@ const AuthOverlay = ({ authMode, setAuthMode, authData, setAuthData, handleAuth,
               <label htmlFor="companyName" className="text-[9px] font-black uppercase tracking-[0.3em] text-muted ml-1">Organização Enterprise</label>
               <div className="relative">
                 <Building2 className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
-                <input id="companyName" required type="text" placeholder="NOME DA EMPRESA" className="panel w-full py-3.5 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.companyName} onChange={e => setAuthData({ ...authData, companyName: e.target.value })} />
+                <input id="companyName" required type="text" placeholder="NOME DA EMPRESA" className="panel w-full py-3.5 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-main focus:border-blue-500 outline-none transition-all placeholder:text-muted/30" value={authData.companyName} onChange={e => setAuthData({ ...authData, companyName: e.target.value })} />
               </div>
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="representative" className="text-[9px] font-black uppercase tracking-[0.3em] text-muted ml-1">Identidade do Operador</label>
               <div className="relative">
                 <User className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500/50" />
-                <input id="representative" required type="text" placeholder="NOME COMPLETO" className="panel w-full py-3.5 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10" value={authData.name} onChange={e => setAuthData({ ...authData, name: e.target.value })} />
+                <input id="representative" required type="text" placeholder="NOME COMPLETO" className="panel w-full py-3.5 pl-14 pr-6 text-xs font-black uppercase tracking-widest text-main focus:border-blue-500 outline-none transition-all placeholder:text-muted/30" value={authData.name} onChange={e => setAuthData({ ...authData, name: e.target.value })} />
               </div>
             </div>
           </motion.div>
@@ -1361,8 +1415,29 @@ const DashboardOverlay = ({ user, userHistory, deleteRecord, setResult, setActiv
                       </div>
                     </div>
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                      <button onClick={() => { setResult(item.extractedText); setActiveOverlay(null); }} className="p-3 bg-gray-500/5 hover:bg-gray-500/10 rounded-lg text-main"><Search className="w-4 h-4" /></button>
-                      <button onClick={() => deleteRecord(item._id)} className="p-3 bg-red-500/5 hover:bg-red-500/10 rounded-lg text-red-500"><Trash2 className="w-4 h-4" /></button>
+                      {item.imageUrl && (
+                        <button
+                          onClick={() => setActiveImage(item.imageUrl)}
+                          className="p-3 bg-blue-500/5 hover:bg-blue-500/10 rounded-lg text-blue-500"
+                          title="Ver Original"
+                        >
+                          <Camera className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setResult(item.extractedText);
+                          setCurrentRecordId(item._id);
+                          setFolderName(item.folder || 'Geral');
+                          setFile({ name: item.fileName, size: item.fileSize });
+                          setActiveOverlay(null);
+                        }}
+                        className="p-3 bg-gray-500/5 hover:bg-gray-500/10 rounded-lg text-main"
+                        title="Abrir e Editar"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => deleteRecord(item._id)} className="p-3 bg-red-500/5 hover:bg-red-500/10 rounded-lg text-red-500" title="Apagar"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
                 ))}
@@ -1560,10 +1635,10 @@ const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, d
                       <select
                         value={u.role}
                         onChange={(e) => updateUser(u._id, { role: e.target.value })}
-                        className="bg-main/5 border border-main/10 rounded px-2 py-1 text-[9px] font-black text-white focus:border-blue-500 outline-none"
+                        className="bg-main/5 border border-main/10 rounded px-2 py-1 text-[9px] font-black text-main focus:border-blue-500 outline-none"
                       >
-                        <option value="user" className="bg-black">Utilizador (User)</option>
-                        <option value="admin" className="bg-black">Administrador (Admin)</option>
+                        <option value="user" className="bg-panel">Utilizador (User)</option>
+                        <option value="admin" className="bg-panel">Administrador (Admin)</option>
                       </select>
                     </div>
 
@@ -1572,12 +1647,12 @@ const AdminOverlay = ({ adminStats, adminPayments, adminUsers, approvePayment, d
                       <select
                         value={u.subscription}
                         onChange={(e) => updateUser(u._id, { subscription: e.target.value })}
-                        className="bg-main/5 border border-main/10 rounded px-2 py-1 text-[9px] font-black text-white focus:border-blue-500 outline-none"
+                        className="bg-main/5 border border-main/10 rounded px-2 py-1 text-[9px] font-black text-main focus:border-blue-500 outline-none"
                       >
-                        <option value="LOCAL" className="bg-black">LOCAL (Grátis)</option>
-                        <option value="HYPER" className="bg-black">HYPER (Pro)</option>
-                        <option value="NEURAL" className="bg-black">NEURAL (Enterprise)</option>
-                        <option value="GLOBAL NEURAL" className="bg-black">GLOBAL NEURAL</option>
+                        <option value="LOCAL" className="bg-panel">LOCAL (Grátis)</option>
+                        <option value="HYPER" className="bg-panel">HYPER (Pro)</option>
+                        <option value="NEURAL" className="bg-panel">NEURAL (Enterprise)</option>
+                        <option value="GLOBAL NEURAL" className="bg-panel">GLOBAL NEURAL</option>
                       </select>
                     </div>
 
