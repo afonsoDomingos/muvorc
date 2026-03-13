@@ -781,303 +781,333 @@ const App = () => {
           </header>
 
 
-          <div className="flex-1 grid lg:grid-cols-12 gap-8 min-h-0 mb-8">
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={`lg:col-span-12 xl:col-span-${showAiPanel ? '3' : '5'} flex flex-col gap-6 min-h-0 transition-all`}>
-              <div className="flex flex-col gap-6 shrink-0 h-full">
-                <div {...getRootProps()} className={`glass flex-1 flex flex-col items-center justify-center p-12 transition-all duration-500 cursor-pointer relative overflow-hidden group ${isDragActive ? 'border-blue-500 ring-4 ring-blue-500/10' : 'hover:border-blue-500/30'}`}>
-                  {/* Decorative Gradient Background */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-8 min-h-0 mb-8 p-1">
+            <div className="grid lg:grid-cols-12 gap-8 shrink-0">
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={`lg:col-span-12 xl:col-span-4 flex flex-col gap-6 min-h-[400px] transition-all`}>
+                <div className="flex flex-col gap-6 shrink-0 h-full">
+                  <div {...getRootProps()} className={`glass flex-1 flex flex-col items-center justify-center p-12 transition-all duration-500 cursor-pointer relative overflow-hidden group ${isDragActive ? 'border-blue-500 ring-4 ring-blue-500/10' : 'hover:border-blue-500/30'}`}>
+                    {/* Decorative Gradient Background */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                  {/* Scanning Laser Effect when drag active or file selected */}
-                  {(isDragActive || file) && (
+                    {/* Scanning Laser Effect when drag active or file selected */}
+                    {(isDragActive || file) && (
+                      <motion.div
+                        initial={{ top: '0%' }}
+                        animate={{ top: '100%' }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent z-10 shadow-[0_0_15px_rgba(59,130,246,0.8)]"
+                      />
+                    )}
+
+                    <input {...getInputProps()} />
                     <motion.div
-                      initial={{ top: '0%' }}
-                      animate={{ top: '100%' }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                      className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent z-10 shadow-[0_0_15px_rgba(59,130,246,0.8)]"
-                    />
-                  )}
+                      animate={file ? { scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] } : {}}
+                      transition={{ duration: 0.5 }}
+                      className="w-24 h-24 rounded-[32px] bg-gray-500/5 flex items-center justify-center mb-8 border border-white/5 shadow-inner transition-transform group-hover:scale-110 duration-500 relative z-20"
+                    >
+                      {file ? (
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                          <CheckCircle2 className="w-10 h-10 text-blue-500" />
+                        </motion.div>
+                      ) : (
+                        <Upload className="w-10 h-10 text-white/20 group-hover:text-blue-500 transition-colors" />
+                      )}
+                    </motion.div>
 
-                  <input {...getInputProps()} />
-                  <motion.div
-                    animate={file ? { scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] } : {}}
-                    transition={{ duration: 0.5 }}
-                    className="w-24 h-24 rounded-[32px] bg-gray-500/5 flex items-center justify-center mb-8 border border-white/5 shadow-inner transition-transform group-hover:scale-110 duration-500 relative z-20"
-                  >
-                    {file ? (
-                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                        <CheckCircle2 className="w-10 h-10 text-blue-500" />
-                      </motion.div>
-                    ) : (
-                      <Upload className="w-10 h-10 text-white/20 group-hover:text-blue-500 transition-colors" />
-                    )}
-                  </motion.div>
+                    <h2 className="text-2xl font-black text-white mb-2 tracking-tight uppercase relative z-20">
+                      {file ? (
+                        <Typewriter text={file.name} speed={30} />
+                      ) : (
+                        'ENVIAR FICHEIRO'
+                      )}
+                    </h2>
+                    <p className="text-blue-500/60 text-[10px] font-black uppercase tracking-[0.4em] mb-4 relative z-20 text-center">
+                      {file ? `${(file.size / 1024).toFixed(1)} KB • PRONTO PARA SCAN` : 'PDF • IMAGENS • DOCUMENTOS'}
+                    </p>
+                  </div>
 
-                  <h2 className="text-2xl font-black text-white mb-2 tracking-tight uppercase relative z-20">
-                    {file ? (
-                      <Typewriter text={file.name} speed={30} />
-                    ) : (
-                      'ENVIAR FICHEIRO'
-                    )}
-                  </h2>
-                  <p className="text-blue-500/60 text-[10px] font-black uppercase tracking-[0.4em] mb-4 relative z-20 text-center">
-                    {file ? `${(file.size / 1024).toFixed(1)} KB • PRONTO PARA SCAN` : 'PDF • IMAGENS • DOCUMENTOS'}
-                  </p>
+                  <div className="flex flex-col gap-4">
+                    <button
+                      onClick={handleProcess}
+                      disabled={!file || loading}
+                      className={`w-full py-5 rounded-2xl flex items-center justify-center gap-4 transition-all duration-500 ${!file || loading ? 'bg-white/5 text-white/20 border border-white/5' : 'btn-tesla-blue'}`}
+                    >
+                      {loading ? (
+                        <><Loader2 className="animate-spin w-5 h-5" /> <span className="font-black text-xs">{progress}%</span></>
+                      ) : (
+                        <><Search className="w-5 h-5" /> <span className="text-[11px] font-black tracking-[0.3em] uppercase">INICIAR SCAN</span></>
+                      )}
+                    </button>
+
+                    <button onClick={startCamera} className="glass py-4 flex items-center justify-center gap-3 hover:bg-blue-500/5 transition-all border border-white/5">
+                      <Camera className="w-5 h-5 text-blue-500" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Abrir Câmara</span>
+                    </button>
+                  </div>
                 </div>
+              </motion.div>
 
-                <div className="flex flex-col gap-4">
-                  <button
-                    onClick={handleProcess}
-                    disabled={!file || loading}
-                    className={`w-full py-5 rounded-2xl flex items-center justify-center gap-4 transition-all duration-500 ${!file || loading ? 'bg-white/5 text-white/20 border border-white/5' : 'btn-tesla-blue'}`}
-                  >
-                    {loading ? (
-                      <><Loader2 className="animate-spin w-5 h-5" /> <span className="font-black text-xs">{progress}%</span></>
-                    ) : (
-                      <><Search className="w-5 h-5" /> <span className="text-[11px] font-black tracking-[0.3em] uppercase">INICIAR SCAN</span></>
-                    )}
-                  </button>
-
-                  <button onClick={startCamera} className="glass py-4 flex items-center justify-center gap-3 hover:bg-blue-500/5 transition-all border border-white/5">
-                    <Camera className="w-5 h-5 text-blue-500" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Abrir Câmara</span>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className={`lg:col-span-12 xl:col-span-${showAiPanel ? '5' : '7'} glass p-0 flex flex-col min-h-0 overflow-hidden relative transition-all`}>
-              <div className="flex justify-between items-center p-8 border-b border-white/5 shrink-0">
-                <div className="flex items-center gap-4">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-white">EXTRACTION PANEL</h3>
-                </div>
-                <div className="flex gap-3">
-                  {result && (
-                    <>
-                      <button
-                        onClick={() => setShowAiPanel(!showAiPanel)}
-                        className={`p-3 rounded-xl transition-all shadow-xl shadow-blue-500/10 ${showAiPanel ? 'bg-blue-500 text-white' : 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20'} animate-pulse`}
-                        title={showAiPanel ? 'Fechar I.A.' : 'Analisar com I.A'}
-                      >
-                        <Sparkles className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() => setIsEditing(!isEditing)}
-                        className={`p-3 rounded-xl transition-all ${isEditing ? 'bg-blue-500 text-white' : 'bg-white/5 text-white/40 hover:text-white'}`}
-                        title={isEditing ? 'Guardar Edição' : 'Editar Texto'}
-                      >
-                        {isEditing ? <CheckCircle2 className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
-                      </button>
-
-                      <div className="relative group/download">
-                        <button className="p-3 bg-white/5 text-white/40 hover:text-white rounded-xl transition-all flex items-center gap-2 group/btn">
-                          <Download className="w-4 h-4" />
-                          <ChevronDown className="w-3 h-3 opacity-50 group-hover/btn:opacity-100" />
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className={`lg:col-span-12 xl:col-span-8 glass p-0 flex flex-col min-h-[400px] overflow-hidden relative transition-all`}>
+                <div className="flex justify-between items-center p-8 border-b border-white/5 shrink-0">
+                  <div className="flex items-center gap-4">
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-white">EXTRACTION PANEL</h3>
+                  </div>
+                  <div className="flex gap-3">
+                    {result && (
+                      <>
+                        <button
+                          onClick={() => setShowAiPanel(!showAiPanel)}
+                          className={`p-3 rounded-xl transition-all shadow-xl shadow-blue-500/10 ${showAiPanel ? 'bg-blue-500 text-white' : 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20'} animate-pulse`}
+                          title={showAiPanel ? 'Fechar I.A.' : 'Analisar com I.A'}
+                        >
+                          <Sparkles className="w-4 h-4" />
                         </button>
-                        <div className="absolute right-0 top-full mt-2 w-48 glass border-white/5 opacity-0 group-hover/download:opacity-100 scale-95 group-hover/download:scale-100 pointer-events-none group-hover/download:pointer-events-auto transition-all z-[100] shadow-2xl bg-[#0a0a0a]">
-                          <div onClick={exportToPDF} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer border-b border-white/5 transition-all text-white/70 hover:text-white">Download PDF</div>
-                          <div onClick={exportToWord} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer border-b border-white/5 transition-all text-white/70 hover:text-white">Download Word</div>
-                          <div onClick={exportToExcel} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer transition-all text-white/70 hover:text-white">Download Excel</div>
+
+                        <button
+                          onClick={() => setIsEditing(!isEditing)}
+                          className={`p-3 rounded-xl transition-all ${isEditing ? 'bg-blue-500 text-white' : 'bg-white/5 text-white/40 hover:text-white'}`}
+                          title={isEditing ? 'Guardar Edição' : 'Editar Texto'}
+                        >
+                          {isEditing ? <CheckCircle2 className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
+                        </button>
+
+                        <div className="relative group/download">
+                          <button className="p-3 bg-white/5 text-white/40 hover:text-white rounded-xl transition-all flex items-center gap-2 group/btn">
+                            <Download className="w-4 h-4" />
+                            <ChevronDown className="w-3 h-3 opacity-50 group-hover/btn:opacity-100" />
+                          </button>
+                          <div className="absolute right-0 top-full mt-2 w-48 glass border-white/5 opacity-0 group-hover/download:opacity-100 scale-95 group-hover/download:scale-100 pointer-events-none group-hover/download:pointer-events-auto transition-all z-[100] shadow-2xl bg-[#0a0a0a]">
+                            <div onClick={exportToPDF} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer border-b border-white/5 transition-all text-white/70 hover:text-white">Download PDF</div>
+                            <div onClick={exportToWord} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer border-b border-white/5 transition-all text-white/70 hover:text-white">Download Word</div>
+                            <div onClick={exportToExcel} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer transition-all text-white/70 hover:text-white">Download Excel</div>
+                          </div>
+                        </div>
+
+                        <button onClick={() => { navigator.clipboard.writeText(result); showNotify('Copiado!'); }} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-white transition-all"><Copy className="w-4 h-4" /></button>
+                      </>
+                    )}
+                    <button onClick={() => { setResult(''); setFile(null); }} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-white transition-all"><RefreshCcw className="w-4 h-4" /></button>
+                  </div>
+                </div>
+
+                <div className="flex-1 p-8 overflow-y-auto custom-scrollbar font-mono text-sm leading-relaxed text-white selection:bg-blue-500/30 bg-[#050505]/40 terminal-glow">
+                  {error ? (
+                    <div className="h-full flex items-center justify-center text-red-500 gap-3 bg-red-500/5 rounded-2xl border border-red-500/10 p-8">
+                      <AlertCircle className="w-6 h-6" />
+                      <span className="font-bold">{error}</span>
+                    </div>
+                  ) : result ? (
+                    isEditing ? (
+                      <textarea
+                        value={result}
+                        onChange={(e) => setResult(e.target.value)}
+                        className="w-full h-full bg-transparent border-none focus:ring-0 text-white font-mono text-sm leading-relaxed outline-none resize-none custom-scrollbar"
+                        spellCheck="false"
+                        placeholder="Edite o conteúdo aqui..."
+                      />
+                    ) : (
+                      <Typewriter text={result} speed={2} />
+                    )
+                  ) : loading ? (
+                    <div className="h-full flex flex-col items-center justify-center gap-8 py-12">
+                      <NeuralProcessor progress={progress} />
+                      <div className="flex flex-col items-center gap-2">
+                        <span className="font-black uppercase text-[12px] tracking-[0.6em] text-blue-500 animate-pulse">Processamento Neural</span>
+                        <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest italic font-mono">
+                          Analizando camadas de dados... {progress}%
+                        </span>
+                      </div>
+                      <div className="w-64 h-1 bg-white/5 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progress}%` }}
+                          className="h-full bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-white/5">
+                      <div className="mb-6 relative">
+                        <FileText className="w-24 h-24" />
+                        <div className="absolute inset-0 bg-blue-500/5 blur-3xl rounded-full" />
+                      </div>
+                      <span className="font-black uppercase text-[12px] tracking-[1em] mb-2">SYSTEM STANDBY</span>
+                      <span className="font-bold uppercase text-[8px] tracking-[0.3em] opacity-50">Aguardando entrada de dados neurais</span>
+                    </div>
+                  )}
+                </div>
+
+                {result && (
+                  <div className="p-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 bg-black/40">
+                    <div className="flex flex-col gap-2 w-full md:w-auto">
+                      <span className="text-[8px] font-black text-muted uppercase tracking-widest opacity-40">DESTINO DO ARQUIVO</span>
+                      <div className="relative">
+                        <select
+                          value={folderName}
+                          onChange={(e) => setFolderName(e.target.value)}
+                          className="w-full md:w-56 bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-[10px] font-black text-white uppercase focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer appearance-none outline-none"
+                        >
+                          <option value="Geral" className="bg-black">Pasta Geral</option>
+                          <option value="Financeiro" className="bg-black">Financeiro</option>
+                          <option value="Recibos" className="bg-black">Recibos</option>
+                          <option value="Contratos" className="bg-black">Contratos</option>
+                          <option value="RH" className="bg-black">Recursos Humanos</option>
+                        </select>
+                        <ChevronDown className="w-3 h-3 absolute right-5 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
+                      </div>
+                    </div>
+                    <button onClick={handleSave} className="w-full md:w-auto flex items-center justify-center gap-4 glass px-12 py-4 bg-blue-500 text-white border-blue-600/20 hover:bg-blue-700 transition-all font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20">
+                      <Save className="w-4 h-4" /> SINCRONIZAR NO ARQUIVO
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+
+              <AnimatePresence>
+                {showAiPanel && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 40 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 40 }}
+                    className="lg:col-span-12 glass p-0 flex flex-col min-h-[600px] overflow-hidden relative border-blue-500/30 shadow-[0_-20px_50px_rgba(0,0,0,0.5)] mb-12"
+                  >
+                    <div className="flex justify-between items-center p-8 border-b border-blue-500/20 shrink-0 bg-blue-500/5">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-4 mb-1">
+                          <Sparkles className="w-5 h-5 text-blue-500" />
+                          <h3 className="text-[12px] font-black uppercase tracking-[0.5em] text-blue-500">MUV NEURAL COMMAND CENTER</h3>
+                        </div>
+                        <p className="text-[8px] text-muted font-bold uppercase tracking-widest ml-9">Llama 3.1 8B Instruct • Inteligência Analítica Ativa</p>
+                      </div>
+                      <div className="flex gap-4">
+                        <button onClick={() => setShowAiPanel(false)} className="p-3 glass hover:bg-red-500/20 text-white/50 hover:text-red-500 transition-all border-none">
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 min-h-0 bg-[#050505]/60 divide-x divide-white/5">
+                      {/* LEFT SIDE: Chat */}
+                      <div className="flex flex-col min-h-0 border-r border-white/5 h-full">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 flex flex-col gap-6">
+                          {chatMessages.length === 0 && (
+                            <div className="m-auto py-20 text-center flex flex-col items-center max-w-[200px]">
+                              <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-6 relative">
+                                <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
+                                <Sparkles className="w-8 h-8 text-blue-500 relative z-10" />
+                              </div>
+                              <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-main mb-2">Consciência Neural</h4>
+                              <p className="text-[9px] font-bold text-muted uppercase tracking-widest leading-relaxed opacity-40">Tire dúvidas sobre o seu documento.</p>
+                            </div>
+                          )}
+                          {chatMessages.map((msg, i) => (
+                            <motion.div
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              key={i}
+                              className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                            >
+                              <div className={`p-4 rounded-2xl text-xs leading-relaxed max-w-[90%] relative group ${msg.sender === 'user'
+                                  ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-tr-none shadow-[0_10px_20px_rgba(37,99,235,0.2)]'
+                                  : `glass border ${msg.sender === 'system' ? 'border-red-500/30 text-red-400 bg-red-500/5' : 'border-white/10 text-gray-200 bg-white/5'} rounded-tl-none`
+                                }`}>
+                                {msg.sender === 'ai' && (
+                                  <div className="text-[8px] font-black uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-2">
+                                    <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
+                                    Neural Agent
+                                  </div>
+                                )}
+                                <Typewriter text={msg.text} speed={5} iterate={false} />
+                              </div>
+                            </motion.div>
+                          ))}
+                          {chatLoading && (
+                            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex justify-start">
+                              <div className="glass border border-blue-500/30 p-4 rounded-2xl rounded-tl-none flex gap-3 items-center bg-blue-500/5">
+                                <div className="flex gap-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.3s]" />
+                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.15s]" />
+                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" />
+                                </div>
+                                <span className="text-[9px] uppercase tracking-[0.2em] font-black text-blue-500/70">Processando...</span>
+                              </div>
+                            </motion.div>
+                          )}
+                          <div ref={chatEndRef} />
+                        </div>
+                        <div className="p-8 border-t border-white/10 bg-black/40">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={chatInput}
+                              onChange={e => setChatInput(e.target.value)}
+                              placeholder="Perguntar algo..."
+                              onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                              className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-6 pr-14 py-4 text-xs text-white"
+                            />
+                            <button onClick={handleSendMessage} className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-blue-500 text-white rounded-xl">
+                              <Send className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
 
-                      <button onClick={() => { navigator.clipboard.writeText(result); showNotify('Copiado!'); }} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-white transition-all"><Copy className="w-4 h-4" /></button>
-                    </>
-                  )}
-                  <button onClick={() => { setResult(''); setFile(null); }} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-white transition-all"><RefreshCcw className="w-4 h-4" /></button>
-                </div>
-              </div>
+                      {/* RIGHT SIDE: Charts */}
+                      <div className="flex flex-col min-h-0 p-8">
+                        <div className="flex justify-between items-center mb-8">
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-blue-500">Análise Visual de Dados</h4>
+                          <button onClick={generateChart} disabled={chartLoading} className="px-4 py-2 glass bg-blue-500/10 text-blue-500 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-blue-500 hover:text-white transition-all">
+                            {chartLoading ? 'Gerando...' : 'Atualizar Gráfico'}
+                          </button>
+                        </div>
 
-              <div className="flex-1 p-8 overflow-y-auto custom-scrollbar font-mono text-sm leading-relaxed text-white selection:bg-blue-500/30 bg-[#050505]/40 terminal-glow">
-                {error ? (
-                  <div className="h-full flex items-center justify-center text-red-500 gap-3 bg-red-500/5 rounded-2xl border border-red-500/10 p-8">
-                    <AlertCircle className="w-6 h-6" />
-                    <span className="font-bold">{error}</span>
-                  </div>
-                ) : result ? (
-                  isEditing ? (
-                    <textarea
-                      value={result}
-                      onChange={(e) => setResult(e.target.value)}
-                      className="w-full h-full bg-transparent border-none focus:ring-0 text-white font-mono text-sm leading-relaxed outline-none resize-none custom-scrollbar"
-                      spellCheck="false"
-                      placeholder="Edite o conteúdo aqui..."
-                    />
-                  ) : (
-                    <Typewriter text={result} speed={2} />
-                  )
-                ) : loading ? (
-                  <div className="h-full flex flex-col items-center justify-center gap-8 py-12">
-                    <NeuralProcessor progress={progress} />
-                    <div className="flex flex-col items-center gap-2">
-                      <span className="font-black uppercase text-[12px] tracking-[0.6em] text-blue-500 animate-pulse">Processamento Neural</span>
-                      <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest italic font-mono">
-                        Analizando camadas de dados... {progress}%
-                      </span>
-                    </div>
-                    <div className="w-64 h-1 bg-white/5 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progress}%` }}
-                        className="h-full bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-white/5">
-                    <div className="mb-6 relative">
-                      <FileText className="w-24 h-24" />
-                      <div className="absolute inset-0 bg-blue-500/5 blur-3xl rounded-full" />
-                    </div>
-                    <span className="font-black uppercase text-[12px] tracking-[1em] mb-2">SYSTEM STANDBY</span>
-                    <span className="font-bold uppercase text-[8px] tracking-[0.3em] opacity-50">Aguardando entrada de dados neurais</span>
-                  </div>
-                )}
-              </div>
-
-              {result && (
-                <div className="p-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 bg-black/40">
-                  <div className="flex flex-col gap-2 w-full md:w-auto">
-                    <span className="text-[8px] font-black text-muted uppercase tracking-widest opacity-40">DESTINO DO ARQUIVO</span>
-                    <div className="relative">
-                      <select
-                        value={folderName}
-                        onChange={(e) => setFolderName(e.target.value)}
-                        className="w-full md:w-56 bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-[10px] font-black text-white uppercase focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer appearance-none outline-none"
-                      >
-                        <option value="Geral" className="bg-black">Pasta Geral</option>
-                        <option value="Financeiro" className="bg-black">Financeiro</option>
-                        <option value="Recibos" className="bg-black">Recibos</option>
-                        <option value="Contratos" className="bg-black">Contratos</option>
-                        <option value="RH" className="bg-black">Recursos Humanos</option>
-                      </select>
-                      <ChevronDown className="w-3 h-3 absolute right-5 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
-                    </div>
-                  </div>
-                  <button onClick={handleSave} className="w-full md:w-auto flex items-center justify-center gap-4 glass px-12 py-4 bg-blue-500 text-white border-blue-600/20 hover:bg-blue-700 transition-all font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20">
-                    <Save className="w-4 h-4" /> SINCRONIZAR NO ARQUIVO
-                  </button>
-                </div>
-              )}
-            </motion.div>
-
-            <AnimatePresence>
-              {showAiPanel && (
-                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="lg:col-span-12 xl:col-span-4 glass p-0 flex flex-col min-h-0 overflow-hidden relative border-blue-500/30">
-                  <div className="flex justify-between items-center p-6 border-b border-blue-500/20 shrink-0 bg-blue-500/5">
-                    <div className="flex items-center gap-4">
-                      <Sparkles className="w-5 h-5 text-blue-500" />
-                      <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500">MUV NEURAL GUIDE</h3>
-                    </div>
-                    <div className="flex gap-2 bg-black/40 p-1 rounded-lg">
-                      <button onClick={() => setAiMode('chat')} className={`p-2 rounded text-[9px] font-black uppercase tracking-widest transition-colors ${aiMode === 'chat' ? 'bg-blue-500 text-white' : 'text-muted hover:text-white'}`} title="Chat"><MessageSquare className="w-4 h-4" /></button>
-                      <button onClick={generateChart} className={`p-2 rounded text-[9px] font-black uppercase tracking-widest transition-colors ${aiMode === 'chart' ? 'bg-blue-500 text-white' : 'text-muted hover:text-white'}`} title="Gráficos de Análise"><PieChart className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-[#050505]/40 flex flex-col gap-4">
-                    {aiMode === 'chat' ? (
-                      <div className="flex flex-col gap-6">
-                        {chatMessages.length === 0 && (
-                          <div className="m-auto py-20 text-center flex flex-col items-center max-w-[200px]">
-                            <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-6 relative">
-                              <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
-                              <Sparkles className="w-8 h-8 text-blue-500 relative z-10" />
-                            </div>
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-main mb-2">Consciência Neural Ativa</h4>
-                            <p className="text-[9px] font-bold text-muted uppercase tracking-widest leading-relaxed opacity-40">Faça perguntas complexas sobre o documento processado.</p>
-                          </div>
-                        )}
-                        {chatMessages.map((msg, i) => (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            key={i}
-                            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <div className={`p-4 rounded-2xl text-xs leading-relaxed max-w-[90%] relative group ${msg.sender === 'user'
-                                ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-tr-none shadow-[0_10px_20px_rgba(37,99,235,0.2)]'
-                                : `glass border ${msg.sender === 'system' ? 'border-red-500/30 text-red-400 bg-red-500/5' : 'border-white/10 text-gray-200 bg-white/5'} rounded-tl-none`
-                              }`}>
-                              {msg.sender === 'ai' && (
-                                <div className="text-[8px] font-black uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-2">
-                                  <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
-                                  MUV Assistant
-                                </div>
-                              )}
-                              <Typewriter text={msg.text} speed={5} iterate={false} />
-                            </div>
-                          </motion.div>
-                        ))}
-                        {chatLoading && (
-                          <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex justify-start">
-                            <div className="glass border border-blue-500/30 p-4 rounded-2xl rounded-tl-none flex gap-3 items-center bg-blue-500/5">
-                              <div className="flex gap-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.3s]" />
-                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.15s]" />
-                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" />
-                              </div>
-                              <span className="text-[9px] uppercase tracking-[0.2em] font-black text-blue-500/70">Processando camadas...</span>
-                            </div>
-                          </motion.div>
-                        )}
-                        <div ref={chatEndRef} />
-                      </div>
-                    ) : (
-                      <div className="flex-1 flex flex-col text-center justify-center items-center h-full">
-                        {chartLoading ? (
-                          <>
-                            <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-6" />
-                            <p className="text-[10px] uppercase font-black text-muted tracking-widest animate-pulse">Extraindo métricas neurais para visualização...</p>
-                          </>
-                        ) : chartData ? (
-                          <div className="w-full h-full flex flex-col pt-4">
-                            <div className="flex justify-between items-start mb-6">
+                        {chartData ? (
+                          <div className="flex-1 flex flex-col pt-4 h-full">
+                            <div className="flex justify-between items-start mb-8">
                               <div>
-                                <h4 className="text-[11px] uppercase tracking-widest font-black text-blue-500">{chartData.title || 'Análise de Métrica'}</h4>
+                                <h4 className="text-[12px] uppercase tracking-widest font-black text-blue-500">{chartData.title || 'Análise de Métrica'}</h4>
                                 <p className="text-[8px] text-muted uppercase font-bold mt-1 tracking-tighter">Motor Neural Llama 3.1 • {chartData.type || 'Padrão'}</p>
                               </div>
-                              <div className="px-2 py-1 bg-blue-500/10 border border-blue-500/20 rounded text-[8px] font-black text-blue-500 uppercase tracking-widest">Live Preview</div>
+                              <div className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[8px] font-black text-blue-500 uppercase tracking-widest">LIVE ANALYTICS</div>
                             </div>
 
-                            <div className="flex-1 min-h-[320px] relative">
+                            <div className="flex-1 min-h-[350px] mb-8 relative">
                               <ResponsiveContainer width="100%" height="100%">
                                 {chartData.type === 'pie' ? (
-                                  <RechartsPie data={chartData.data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5}>
-                                    {chartData.data.map((_, i) => <Cell key={i} fill={['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'][i % 6]} stroke="rgba(255,255,255,0.1)" />)}
-                                    <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #1e3a8a', borderRadius: '12px', fontSize: '11px', color: '#fff' }} />
+                                  <RechartsPie data={chartData.data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={5}>
+                                    {chartData.data.map((_, i) => <Cell key={i} fill={['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899'][i % 5]} stroke="rgba(255,255,255,0.05)" />)}
+                                    <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #1e3a8a', borderRadius: '16px' }} />
                                   </RechartsPie>
                                 ) : chartData.type === 'line' ? (
-                                  <LineChart data={chartData.data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                                  <LineChart data={chartData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-                                    <XAxis dataKey="name" stroke="#ffffff30" fontSize={9} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#ffffff30" fontSize={9} tickLine={false} axisLine={false} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #1e3a8a', borderRadius: '12px', fontSize: '11px', color: '#fff' }} />
-                                    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                                    <XAxis dataKey="name" stroke="#ffffff30" fontSize={9} />
+                                    <YAxis stroke="#ffffff30" fontSize={9} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #3b82f6', borderRadius: '16px' }} />
+                                    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={4} dot={{ fill: '#3b82f6', r: 5 }} />
                                   </LineChart>
                                 ) : chartData.type === 'area' ? (
-                                  <AreaChart data={chartData.data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                                  <AreaChart data={chartData.data}>
                                     <defs>
                                       <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
                                         <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                       </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-                                    <XAxis dataKey="name" stroke="#ffffff30" fontSize={9} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#ffffff30" fontSize={9} tickLine={false} axisLine={false} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #1e3a8a', borderRadius: '12px', fontSize: '11px', color: '#fff' }} />
-                                    <Area type="monotone" dataKey="value" stroke="#3b82f6" fillOpacity={1} fill="url(#colorValue)" strokeWidth={2} />
+                                    <XAxis dataKey="name" stroke="#ffffff30" fontSize={9} />
+                                    <YAxis stroke="#ffffff30" fontSize={9} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #3b82f6', borderRadius: '16px' }} />
+                                    <Area type="monotone" dataKey="value" stroke="#3b82f6" fillOpacity={1} fill="url(#colorValue)" strokeWidth={3} />
                                   </AreaChart>
                                 ) : (
-                                  <BarChart data={chartData.data} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+                                  <BarChart data={chartData.data}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-                                    <XAxis dataKey="name" stroke="#ffffff30" fontSize={9} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#ffffff30" fontSize={9} tickLine={false} axisLine={false} />
-                                    <Tooltip cursor={{ fill: '#ffffff05' }} contentStyle={{ backgroundColor: '#050505', border: '1px solid #1e3a8a', borderRadius: '12px', fontSize: '11px', color: '#fff' }} itemStyle={{ color: '#3b82f6' }} />
-                                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                    <XAxis dataKey="name" stroke="#ffffff30" fontSize={9} />
+                                    <YAxis stroke="#ffffff30" fontSize={9} />
+                                    <Tooltip cursor={{ fill: '#ffffff03' }} contentStyle={{ backgroundColor: '#050505', border: '1px solid #3b82f6', borderRadius: '16px' }} />
+                                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                                       {chartData.data.map((_, i) => <Cell key={i} fill={i % 2 === 0 ? '#3b82f6' : '#8b5cf6'} />)}
                                     </Bar>
                                   </BarChart>
@@ -1085,63 +1115,36 @@ const App = () => {
                               </ResponsiveContainer>
                             </div>
 
-                            <div className="mt-8 grid grid-cols-2 gap-4">
-                              <div className="panel p-4 border-white/5 bg-white/[0.02]">
-                                <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">Ponto Mais Alto</p>
-                                <p className="text-sm font-black text-main">{Math.max(...chartData.data.map(d => d.value))}</p>
+                            <div className="grid grid-cols-3 gap-6">
+                              <div className="glass p-6 border-white/5 bg-white/[0.02] rounded-2xl hover:border-blue-500/30 transition-all">
+                                <p className="text-[9px] font-black text-muted uppercase tracking-widest mb-2">Neural Avg</p>
+                                <p className="text-2xl font-black text-main">{(chartData.data.reduce((a, b) => a + b.value, 0) / chartData.data.length).toFixed(1)}</p>
                               </div>
-                              <div className="panel p-4 border-white/5 bg-white/[0.02]">
-                                <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">Média Neural</p>
-                                <p className="text-sm font-black text-blue-500">{(chartData.data.reduce((a, b) => a + b.value, 0) / chartData.data.length).toFixed(1)}</p>
+                              <div className="glass p-6 border-white/5 bg-white/[0.02] rounded-2xl hover:border-blue-500/30 transition-all">
+                                <p className="text-[9px] font-black text-muted uppercase tracking-widest mb-2">Pico Neural</p>
+                                <p className="text-2xl font-black text-blue-500">{Math.max(...chartData.data.map(d => d.value))}</p>
+                              </div>
+                              <div className="glass p-6 border-white/5 bg-white/[0.02] rounded-2xl hover:border-blue-500/30 transition-all">
+                                <p className="text-[9px] font-black text-muted uppercase tracking-widest mb-2">Volume</p>
+                                <p className="text-2xl font-black text-main">{chartData.data.length} <span className="text-[10px] text-muted">pts</span></p>
                               </div>
                             </div>
-
-                            <p className="text-[8px] mt-6 font-black uppercase text-muted tracking-widest pt-4 border-t border-white/5 flex items-center justify-between opacity-50">
-                              <span>Visualização gerada por RNA</span>
-                              <span>ID: {Math.random().toString(36).substr(2, 9).toUpperCase()}</span>
-                            </p>
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center gap-4 opacity-50">
-                            <AlertCircle className="w-8 h-8 text-red-500" />
-                            <p className="text-[10px] uppercase font-black tracking-widest text-red-500">Falha ao extrair dados quantificáveis</p>
+                          <div className="m-auto text-center opacity-30 flex flex-col items-center">
+                            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-6">
+                              <PieChart className="w-8 h-8 text-white" />
+                            </div>
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] mb-2">Matrix Aguardando</h4>
+                            <p className="text-[9px] font-bold text-muted uppercase tracking-widest leading-relaxed max-w-[180px]">As métricas serão geradas automaticamente após o processamento.</p>
                           </div>
                         )}
                       </div>
-                    )}
-                  </div>
-
-                  {aiMode === 'chat' && (
-                    <div className="p-6 border-t border-white/10 shrink-0 bg-black/40 backdrop-blur-xl">
-                      <div className="relative group/input">
-                        <input
-                          type="text"
-                          value={chatInput}
-                          onChange={e => setChatInput(e.target.value)}
-                          placeholder="Perguntar ao assistente neural..."
-                          onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                          className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-6 pr-14 py-4 text-xs text-white focus:border-blue-500 focus:bg-white/[0.05] outline-none transition-all placeholder:text-muted placeholder:uppercase placeholder:text-[9px] placeholder:tracking-widest"
-                        />
-                        <button
-                          onClick={handleSendMessage}
-                          disabled={chatLoading || !chatInput.trim()}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all shadow-[0_5px_15px_rgba(59,130,246,0.4)] disabled:opacity-30 disabled:grayscale disabled:shadow-none hover:scale-110 active:scale-90"
-                        >
-                          <Send className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div className="flex justify-between items-center mt-3 px-2">
-                        <div className="flex items-center gap-2 opacity-30">
-                          <div className="w-1 h-1 rounded-full bg-green-500" />
-                          <span className="text-[7px] font-black uppercase tracking-widest text-main">Llama 3.1 Online</span>
-                        </div>
-                        <p className="text-[7px] font-bold text-muted uppercase tracking-tighter opacity-20">Analise Segura & Privada</p>
-                      </div>
                     </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </main>
 
