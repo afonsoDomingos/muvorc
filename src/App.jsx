@@ -979,26 +979,52 @@ const App = () => {
 
                   <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-[#050505]/40 flex flex-col gap-4">
                     {aiMode === 'chat' ? (
-                      <>
+                      <div className="flex flex-col gap-6">
                         {chatMessages.length === 0 && (
-                          <div className="m-auto text-center opacity-40 flex flex-col items-center">
-                            <MessageSquare className="w-8 h-8 mb-4 text-blue-500" />
-                            <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">Faça perguntas sobre o documento que foi processado e a I.A. responderá instantaneamente.</p>
+                          <div className="m-auto py-20 text-center flex flex-col items-center max-w-[200px]">
+                            <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-6 relative">
+                              <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
+                              <Sparkles className="w-8 h-8 text-blue-500 relative z-10" />
+                            </div>
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-main mb-2">Consciência Neural Ativa</h4>
+                            <p className="text-[9px] font-bold text-muted uppercase tracking-widest leading-relaxed opacity-40">Faça perguntas complexas sobre o documento processado.</p>
                           </div>
                         )}
                         {chatMessages.map((msg, i) => (
-                          <div key={i} className={`p-4 rounded-xl text-xs leading-relaxed max-w-[85%] ${msg.sender === 'user' ? 'bg-blue-500 text-white self-end rounded-tr-sm shadow-[0_0_15px_rgba(59,130,246,0.3)]' : `glass border ${msg.sender === 'system' ? 'border-red-500/30 text-red-400' : 'border-white/5 text-gray-300'} self-start rounded-tl-sm`}`}>
-                            <Typewriter text={msg.text} speed={5} iterate={false} />
-                          </div>
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            key={i}
+                            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div className={`p-4 rounded-2xl text-xs leading-relaxed max-w-[90%] relative group ${msg.sender === 'user'
+                                ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-tr-none shadow-[0_10px_20px_rgba(37,99,235,0.2)]'
+                                : `glass border ${msg.sender === 'system' ? 'border-red-500/30 text-red-400 bg-red-500/5' : 'border-white/10 text-gray-200 bg-white/5'} rounded-tl-none`
+                              }`}>
+                              {msg.sender === 'ai' && (
+                                <div className="text-[8px] font-black uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-2">
+                                  <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
+                                  MUV Assistant
+                                </div>
+                              )}
+                              <Typewriter text={msg.text} speed={5} iterate={false} />
+                            </div>
+                          </motion.div>
                         ))}
                         {chatLoading && (
-                          <div className="p-4 rounded-xl text-xs glass border border-blue-500/30 self-start rounded-tl-sm flex gap-3 items-center text-blue-500">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-[9px] uppercase tracking-widest font-black">Analisando contexto...</span>
-                          </div>
+                          <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex justify-start">
+                            <div className="glass border border-blue-500/30 p-4 rounded-2xl rounded-tl-none flex gap-3 items-center bg-blue-500/5">
+                              <div className="flex gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.3s]" />
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.15s]" />
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" />
+                              </div>
+                              <span className="text-[9px] uppercase tracking-[0.2em] font-black text-blue-500/70">Processando camadas...</span>
+                            </div>
+                          </motion.div>
                         )}
                         <div ref={chatEndRef} />
-                      </>
+                      </div>
                     ) : (
                       <div className="flex-1 flex flex-col text-center justify-center items-center h-full">
                         {chartLoading ? (
@@ -1086,18 +1112,31 @@ const App = () => {
                   </div>
 
                   {aiMode === 'chat' && (
-                    <div className="p-4 border-t border-white/5 flex gap-3 shrink-0 bg-black/40">
-                      <input
-                        type="text"
-                        value={chatInput}
-                        onChange={e => setChatInput(e.target.value)}
-                        placeholder="Quais os insights deste documento?"
-                        onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-xs text-white focus:border-blue-500 outline-none transition-all placeholder:text-muted"
-                      />
-                      <button onClick={handleSendMessage} disabled={chatLoading || !chatInput.trim()} className="p-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all shadow-[0_0_15px_rgba(59,130,246,0.3)] disabled:opacity-50 disabled:shadow-none hover:scale-105 active:scale-95">
-                        <Send className="w-5 h-5" />
-                      </button>
+                    <div className="p-6 border-t border-white/10 shrink-0 bg-black/40 backdrop-blur-xl">
+                      <div className="relative group/input">
+                        <input
+                          type="text"
+                          value={chatInput}
+                          onChange={e => setChatInput(e.target.value)}
+                          placeholder="Perguntar ao assistente neural..."
+                          onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                          className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-6 pr-14 py-4 text-xs text-white focus:border-blue-500 focus:bg-white/[0.05] outline-none transition-all placeholder:text-muted placeholder:uppercase placeholder:text-[9px] placeholder:tracking-widest"
+                        />
+                        <button
+                          onClick={handleSendMessage}
+                          disabled={chatLoading || !chatInput.trim()}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all shadow-[0_5px_15px_rgba(59,130,246,0.4)] disabled:opacity-30 disabled:grayscale disabled:shadow-none hover:scale-110 active:scale-90"
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="flex justify-between items-center mt-3 px-2">
+                        <div className="flex items-center gap-2 opacity-30">
+                          <div className="w-1 h-1 rounded-full bg-green-500" />
+                          <span className="text-[7px] font-black uppercase tracking-widest text-main">Llama 3.1 Online</span>
+                        </div>
+                        <p className="text-[7px] font-bold text-muted uppercase tracking-tighter opacity-20">Analise Segura & Privada</p>
+                      </div>
                     </div>
                   )}
                 </motion.div>
