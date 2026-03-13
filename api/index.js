@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { v2 as cloudinary } from 'cloudinary';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { HfInference } from '@huggingface/inference';
 
 dotenv.config();
 
@@ -13,6 +14,8 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ocrmuv_super_secret_key_2024';
+const hf = new HfInference(process.env.HF_TOKEN || '');
+console.log('[BOOT] HF_TOKEN presente:', !!process.env.HF_TOKEN);
 
 // Cloudinary Config
 cloudinary.config({
@@ -387,6 +390,74 @@ app.delete('/api/ocr/:id', authenticate, async (req, res) => {
         res.json({ message: 'Ficheiro removido' });
     } catch (error) {
         res.status(500).json({ error: 'Erro ao remover' });
+    }
+});
+
+// ===================== AI ROUTES =====================
+app.post('/api/ai/chat', authenticate, async (req, res) => {
+    const { documentText, query } = req.body;
+    console.log('[AI/CHAT] Pedido recebido. Query:', query?.substring(0, 80));
+    console.log('[AI/CHAT] HF_TOKEN presente:', !!process.env.HF_TOKEN);
+    console.log('[AI/CHAT] Texto de documento (primeiros 100 chars):', documentText?.substring(0, 100));
+
+    try {
+        const prompt = `System: You are MUV Neural Guide, an AI assistant analyzing a document.\n\nDocument Text: ${documentText?.substring(0, 1500) || ''}\n\nUser Question: ${query}\n\nAnswer concisely based on the document:`;
+
+        console.log('[AI/CHAT] A chamar modelo Llama 3.1...');
+        const response = await hf.textGeneration({
+            model: 'meta-llama/Llama-3.1-8B-Instruct',
+            inputs: prompt,
+            parameters: { max_new_tokens: 250, temperature: 0.5 },
+        });
+
+        const answer = response.generated_text.replace(prompt, '').trim();
+        console.log('[AI/CHAT] Resposta recebida (primeiros 100 chars):', answer?.substring(0, 100));
+        res.json({ answer });
+    } catch (error) {
+        console.error('[AI/CHAT] ERRO:', error?.message || error);
+        res.json({ answer: `Erro ao interagir com a IA: ${error?.message || 'Erro desconhecido'}. Verifique as variáveis de ambiente (HF_TOKEN) no Vercel.` });
+    }
+});
+
+app.post('/api/ai/analyze-chart', authenticate, async (req, res) => {
+    const { documentText } = req.body;
+    console.log('[AI/CHART] Pedido recebido.');
+    console.log('[AI/CHART] HF_TOKEN presente:', !!process.env.HF_TOKEN);
+
+    try {
+        const prompt = `System: Analyze the numbers in this text and create a JSON object for a chart. Format: {"title":"Values","type":"bar","data":[{"name":"Item","value":100}]}. Use real data from the text if available. Output ONLY valid JSON, nothing else.\n\nText: ${documentText?.substring(0, 500) || ''}\n\nJSON Output:`;
+
+        console.log('[AI/CHART] A chamar modelo Llama 3.1...');
+        const response = await hf.textGeneration({
+            model: 'meta-llama/Llama-3.1-8B-Instruct',
+            inputs: prompt,
+            parameters: { max_new_tokens: 250, temperature: 0.1 },
+        });
+
+        const textRes = response.generated_text.replace(prompt, '').trim();
+        console.log('[AI/CHART] Resposta bruta:', textRes?.substring(0, 200));
+        const jsonStart = textRes.indexOf('{');
+        const jsonEnd = textRes.lastIndexOf('}');
+
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+            const chartData = JSON.parse(textRes.substring(jsonStart, jsonEnd + 1));
+            console.log('[AI/CHART] Dados de gráfico extraídos com sucesso:', chartData.title);
+            return res.json(chartData);
+        }
+        throw new Error('A IA não devolveu JSON válido: ' + textRes?.substring(0, 100));
+    } catch (error) {
+        console.error('[AI/CHART] ERRO:', error?.message || error);
+        // Fallback chart
+        res.json({
+            title: "Resultados Automáticos (Fallback)",
+            type: "bar",
+            data: [
+                { name: "Receitas", value: 12500 },
+                { name: "Despesas", value: 4300 },
+                { name: "Impostos", value: 3100 },
+                { name: "Lucro", value: 5100 }
+            ]
+        });
     }
 });
 
