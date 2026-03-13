@@ -383,15 +383,17 @@ app.delete('/api/ocr/:id', authenticate, async (req, res) => {
 app.post('/api/ai/chat', authenticate, async (req, res) => {
     try {
         const { documentText, query } = req.body;
-        const prompt = `System: You are MUV Neural Guide, an AI assistant analyzing a document.\n\nDocument Text: ${documentText?.substring(0, 1500) || ''}\n\nUser Question: ${query}\n\nAnswer concisely based on the document:`;
-
-        const response = await hf.textGeneration({
+        const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
-            inputs: prompt,
-            parameters: { max_new_tokens: 250, temperature: 0.5 },
+            messages: [
+                { role: 'system', content: 'You are MUV Neural Guide, an AI assistant analyzing a document. Answer concisely based on the document provided.' },
+                { role: 'user', content: `Document Context: ${documentText?.substring(0, 1500) || ''}\n\nQuestion: ${query}` }
+            ],
+            max_tokens: 250,
+            temperature: 0.5,
         });
 
-        const answer = response.generated_text.replace(prompt, '').trim();
+        const answer = response.choices[0].message.content.trim();
         res.json({ answer });
     } catch (error) {
         console.error('AI Chat Error:', error);
@@ -403,15 +405,17 @@ app.post('/api/ai/chat', authenticate, async (req, res) => {
 app.post('/api/ai/analyze-chart', authenticate, async (req, res) => {
     try {
         const { documentText } = req.body;
-        const prompt = `System: Analyze the numbers in this text and create a JSON object for a chart. Format: {"title":"Values","type":"bar","data":[{"name":"Item","value":100}]}. Use real data from the text if available, otherwise make up a placeholder based on text context. Output ONLY valid JSON, nothing else.\n\nText: ${documentText?.substring(0, 500) || ''}\n\nJSON Output:`;
-
-        const response = await hf.textGeneration({
+        const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
-            inputs: prompt,
-            parameters: { max_new_tokens: 250, temperature: 0.1 },
+            messages: [
+                { role: 'system', content: 'Analyze numbers and create a JSON object for a chart. Format: {"title":"Values","type":"bar","data":[{"name":"Item","value":100}]}. Output ONLY valid JSON.' },
+                { role: 'user', content: `Text: ${documentText?.substring(0, 800) || ''}` }
+            ],
+            max_tokens: 250,
+            temperature: 0.1,
         });
 
-        const textRes = response.generated_text.replace(prompt, '').trim();
+        const textRes = response.choices[0].message.content.trim();
         const jsonStart = textRes.indexOf('{');
         const jsonEnd = textRes.lastIndexOf('}');
 
