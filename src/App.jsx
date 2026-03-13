@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, Upload, CheckCircle2, Loader2, Copy, Download,
@@ -6,7 +6,7 @@ import {
   Shield, Zap, Globe, Menu, X, User, HelpCircle, ArrowRight,
   Cpu, Lock, Database, Headphones, Mail, Key, LogOut, Trash2,
   BarChart3, Users, Settings, Activity, Camera, Building2,
-  Edit3, Save, ChevronDown, Home
+  Edit3, Save, ChevronDown, Home, MessageSquare, PieChart, Send
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useDropzone } from 'react-dropzone';
@@ -16,6 +16,7 @@ import { jsPDF } from 'jspdf';
 import { pack, Document, Packer, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart as RechartsPie, Pie, Cell } from 'recharts';
 
 const App = () => {
   const [file, setFile] = useState(null);
@@ -52,6 +53,20 @@ const App = () => {
   const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null });
   const [currentRecordId, setCurrentRecordId] = useState(null);
   const [activeImage, setActiveImage] = useState(null);
+
+  // AI & Analytics State
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiMode, setAiMode] = useState('chat');
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chartData, setChartData] = useState(null);
+  const [chartLoading, setChartLoading] = useState(false);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, chatLoading]);
 
   const showNotify = (message, type = 'success') => {
     const id = Date.now();
@@ -256,6 +271,38 @@ const App = () => {
     XLSX.utils.book_append_sheet(wb, ws, "MUV_OCR_DATA");
     XLSX.writeFile(wb, `${file?.name || 'DOC'}_muv_export.xlsx`);
     showNotify('Excel XLSX Gerado');
+  };
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || !result) return;
+    const userMsg = chatInput;
+    setChatMessages(prev => [...prev, { text: userMsg, sender: 'user' }]);
+    setChatInput('');
+    setChatLoading(true);
+
+    try {
+      const res = await axios.post('/api/ai/chat', { documentText: result, query: userMsg }, { headers: { Authorization: `Bearer ${token}` } });
+      setChatMessages(prev => [...prev, { text: res.data.answer, sender: 'ai' }]);
+    } catch (err) {
+      setChatMessages(prev => [...prev, { text: 'Erro ao interagir com o motor neural de I.A. Tente novamente.', sender: 'system' }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const generateChart = async () => {
+    if (!result) return;
+    setAiMode('chart');
+    if (chartData) return;
+    setChartLoading(true);
+    try {
+      const res = await axios.post('/api/ai/analyze-chart', { documentText: result }, { headers: { Authorization: `Bearer ${token}` } });
+      setChartData(res.data);
+    } catch (err) {
+      showNotify('Erro ao gerar análise financeira visual', 'error');
+    } finally {
+      setChartLoading(false);
+    }
   };
 
   const handleAuth = async (e) => {
@@ -735,7 +782,7 @@ const App = () => {
 
 
           <div className="flex-1 grid lg:grid-cols-12 gap-8 min-h-0 mb-8">
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-12 xl:col-span-5 flex flex-col gap-6 min-h-0">
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={`lg:col-span-12 xl:col-span-${showAiPanel ? '3' : '5'} flex flex-col gap-6 min-h-0 transition-all`}>
               <div className="flex flex-col gap-6 shrink-0 h-full">
                 <div {...getRootProps()} className={`glass flex-1 flex flex-col items-center justify-center p-12 transition-all duration-500 cursor-pointer relative overflow-hidden group ${isDragActive ? 'border-blue-500 ring-4 ring-blue-500/10' : 'hover:border-blue-500/30'}`}>
                   {/* Decorative Gradient Background */}
@@ -799,7 +846,7 @@ const App = () => {
               </div>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-12 xl:col-span-7 glass p-0 flex flex-col min-h-0 overflow-hidden relative">
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className={`lg:col-span-12 xl:col-span-${showAiPanel ? '5' : '7'} glass p-0 flex flex-col min-h-0 overflow-hidden relative transition-all`}>
               <div className="flex justify-between items-center p-8 border-b border-white/5 shrink-0">
                 <div className="flex items-center gap-4">
                   <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
@@ -808,6 +855,14 @@ const App = () => {
                 <div className="flex gap-3">
                   {result && (
                     <>
+                      <button
+                        onClick={() => setShowAiPanel(!showAiPanel)}
+                        className={`p-3 rounded-xl transition-all shadow-xl shadow-blue-500/10 ${showAiPanel ? 'bg-blue-500 text-white' : 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20'} animate-pulse`}
+                        title={showAiPanel ? 'Fechar I.A.' : 'Analisar com I.A'}
+                      >
+                        <Sparkles className="w-4 h-4" />
+                      </button>
+
                       <button
                         onClick={() => setIsEditing(!isEditing)}
                         className={`p-3 rounded-xl transition-all ${isEditing ? 'bg-blue-500 text-white' : 'bg-white/5 text-white/40 hover:text-white'}`}
@@ -907,6 +962,100 @@ const App = () => {
                 </div>
               )}
             </motion.div>
+
+            <AnimatePresence>
+              {showAiPanel && (
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="lg:col-span-12 xl:col-span-4 glass p-0 flex flex-col min-h-0 overflow-hidden relative border-blue-500/30">
+                  <div className="flex justify-between items-center p-6 border-b border-blue-500/20 shrink-0 bg-blue-500/5">
+                    <div className="flex items-center gap-4">
+                      <Sparkles className="w-5 h-5 text-blue-500" />
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500">MUV NEURAL GUIDE</h3>
+                    </div>
+                    <div className="flex gap-2 bg-black/40 p-1 rounded-lg">
+                      <button onClick={() => setAiMode('chat')} className={`p-2 rounded text-[9px] font-black uppercase tracking-widest transition-colors ${aiMode === 'chat' ? 'bg-blue-500 text-white' : 'text-muted hover:text-white'}`} title="Chat"><MessageSquare className="w-4 h-4" /></button>
+                      <button onClick={generateChart} className={`p-2 rounded text-[9px] font-black uppercase tracking-widest transition-colors ${aiMode === 'chart' ? 'bg-blue-500 text-white' : 'text-muted hover:text-white'}`} title="Gráficos de Análise"><PieChart className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-[#050505]/40 flex flex-col gap-4">
+                    {aiMode === 'chat' ? (
+                      <>
+                        {chatMessages.length === 0 && (
+                          <div className="m-auto text-center opacity-40 flex flex-col items-center">
+                            <MessageSquare className="w-8 h-8 mb-4 text-blue-500" />
+                            <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">Faça perguntas sobre o documento que foi processado e a I.A. responderá instantaneamente.</p>
+                          </div>
+                        )}
+                        {chatMessages.map((msg, i) => (
+                          <div key={i} className={`p-4 rounded-xl text-xs leading-relaxed max-w-[85%] ${msg.sender === 'user' ? 'bg-blue-500 text-white self-end rounded-tr-sm shadow-[0_0_15px_rgba(59,130,246,0.3)]' : `glass border ${msg.sender === 'system' ? 'border-red-500/30 text-red-400' : 'border-white/5 text-gray-300'} self-start rounded-tl-sm`}`}>
+                            <Typewriter text={msg.text} speed={5} iterate={false} />
+                          </div>
+                        ))}
+                        {chatLoading && (
+                          <div className="p-4 rounded-xl text-xs glass border border-blue-500/30 self-start rounded-tl-sm flex gap-3 items-center text-blue-500">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-[9px] uppercase tracking-widest font-black">Analisando contexto...</span>
+                          </div>
+                        )}
+                        <div ref={chatEndRef} />
+                      </>
+                    ) : (
+                      <div className="flex-1 flex flex-col text-center justify-center items-center h-full">
+                        {chartLoading ? (
+                          <>
+                            <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-6" />
+                            <p className="text-[10px] uppercase font-black text-muted tracking-widest animate-pulse">Extraindo métricas neurais para visualização...</p>
+                          </>
+                        ) : chartData ? (
+                          <div className="w-full h-full flex flex-col pt-4">
+                            <h4 className="text-[11px] uppercase tracking-widest font-black text-blue-500 mb-6">{chartData.title || 'Análise Financeira Automatizada'}</h4>
+                            <div className="flex-1 min-h-[300px]">
+                              <ResponsiveContainer width="100%" height="80%">
+                                {chartData.type === 'pie' ? (
+                                  <RechartsPie data={chartData.data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80}>
+                                    {chartData.data.map((_, i) => <Cell key={i} fill={['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899'][i % 5]} />)}
+                                  </RechartsPie>
+                                ) : (
+                                  <BarChart data={chartData.data} margin={{ top: 20, right: 20, left: -20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                                    <XAxis dataKey="name" stroke="#ffffff40" fontSize={9} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#ffffff40" fontSize={9} tickLine={false} axisLine={false} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #1e3a8a', borderRadius: '12px', fontSize: '11px', color: '#fff' }} itemStyle={{ color: '#3b82f6' }} />
+                                    <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                                  </BarChart>
+                                )}
+                              </ResponsiveContainer>
+                            </div>
+                            <p className="text-[8px] mt-auto font-black uppercase text-muted tracking-widest pt-4 border-t border-white/5">Visualização gerada por RNA</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center gap-4 opacity-50">
+                            <AlertCircle className="w-8 h-8 text-red-500" />
+                            <p className="text-[10px] uppercase font-black tracking-widest text-red-500">Falha ao extrair dados quantificáveis</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {aiMode === 'chat' && (
+                    <div className="p-4 border-t border-white/5 flex gap-3 shrink-0 bg-black/40">
+                      <input
+                        type="text"
+                        value={chatInput}
+                        onChange={e => setChatInput(e.target.value)}
+                        placeholder="Quais os insights deste documento?"
+                        onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-xs text-white focus:border-blue-500 outline-none transition-all placeholder:text-muted"
+                      />
+                      <button onClick={handleSendMessage} disabled={chatLoading || !chatInput.trim()} className="p-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all shadow-[0_0_15px_rgba(59,130,246,0.3)] disabled:opacity-50 disabled:shadow-none hover:scale-105 active:scale-95">
+                        <Send className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </main>
 
