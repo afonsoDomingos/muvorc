@@ -63,6 +63,14 @@ const App = () => {
   const [chartData, setChartData] = useState(null);
   const [chartLoading, setChartLoading] = useState(false);
   const chatEndRef = useRef(null);
+  const aiPanelRef = useRef(null);
+
+  const handleOpenAiPanel = () => {
+    setShowAiPanel(true);
+    setTimeout(() => {
+      aiPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -857,11 +865,12 @@ const App = () => {
                     {result && (
                       <>
                         <button
-                          onClick={() => setShowAiPanel(!showAiPanel)}
-                          className={`p-3 rounded-xl transition-all shadow-xl shadow-blue-500/10 ${showAiPanel ? 'bg-blue-500 text-white' : 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20'} animate-pulse`}
+                          onClick={handleOpenAiPanel}
+                          className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all shadow-xl shadow-blue-500/10 ${showAiPanel ? 'bg-blue-500 text-white' : 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20'} group/neural`}
                           title={showAiPanel ? 'Fechar I.A.' : 'Analisar com I.A'}
                         >
-                          <Sparkles className="w-4 h-4" />
+                          <Sparkles className={`w-4 h-4 ${!showAiPanel && 'animate-pulse'}`} />
+                          <span className="text-[9px] font-black uppercase tracking-widest hidden md:inline">Neural Agent</span>
                         </button>
 
                         <button
@@ -967,6 +976,7 @@ const App = () => {
               <AnimatePresence>
                 {showAiPanel && (
                   <motion.div
+                    ref={aiPanelRef}
                     initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 40 }}
@@ -1009,8 +1019,8 @@ const App = () => {
                               className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
                               <div className={`p-4 rounded-2xl text-xs leading-relaxed max-w-[90%] relative group ${msg.sender === 'user'
-                                  ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-tr-none shadow-[0_10px_20px_rgba(37,99,235,0.2)]'
-                                  : `glass border ${msg.sender === 'system' ? 'border-red-500/30 text-red-400 bg-red-500/5' : 'border-white/10 text-gray-200 bg-white/5'} rounded-tl-none`
+                                ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-tr-none shadow-[0_10px_20px_rgba(37,99,235,0.2)]'
+                                : `glass border ${msg.sender === 'system' ? 'border-red-500/30 text-red-400 bg-red-500/5' : 'border-white/10 text-gray-200 bg-white/5'} rounded-tl-none`
                                 }`}>
                                 {msg.sender === 'ai' && (
                                   <div className="text-[8px] font-black uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-2">
@@ -1162,6 +1172,13 @@ const App = () => {
 
             <button title="Vídeo Scan" className="p-4 rounded-xl text-white/40 hover:bg-white/5 hover:text-white transition-all">
               <BarChart3 className="w-5 h-5" />
+            </button>
+
+            <button onClick={handleOpenAiPanel} className="flex flex-col items-center gap-1 p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white w-full hover:scale-105 active:scale-95 transition-all shadow-[0_10px_20px_rgba(59,130,246,0.4)] group relative overflow-hidden">
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+              <Sparkles className="w-4 h-4 relative z-10" />
+              <span className="text-[8px] font-black uppercase tracking-tighter relative z-10">Agent</span>
+              <div className="absolute inset-x-0 bottom-0 h-1 bg-white/30 animate-pulse" />
             </button>
 
             <div className="w-full h-[1px] bg-white/5 my-2" />
