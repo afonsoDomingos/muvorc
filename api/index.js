@@ -435,10 +435,10 @@ app.post('/api/ai/analyze-chart', authenticate, async (req, res) => {
         const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
             messages: [
-                { role: 'system', content: 'Analyze numbers and create a JSON object for a chart. Format: {"title":"Values","type":"bar","data":[{"name":"Item","value":100}]}. Output ONLY valid JSON.' },
-                { role: 'user', content: `Text: ${documentText?.substring(0, 800) || ''}` }
+                { role: 'system', content: 'You are a financial data analyst. Extract numerical data from the text and choose the BEST visualization type: "bar", "line", "area", or "pie". Return ONLY a JSON object: {"title":"Short Title","type":"bar|line|area|pie","data":[{"name":"label","value":100}]}. Use real labels and values from the text. If no clear data exists, create a plausible example based on the text context.' },
+                { role: 'user', content: `Extract metrics from this document text: ${documentText?.substring(0, 1000) || ''}` }
             ],
-            max_tokens: 250,
+            max_tokens: 400,
             temperature: 0.1,
         });
 

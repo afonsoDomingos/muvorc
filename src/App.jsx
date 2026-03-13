@@ -16,7 +16,7 @@ import { jsPDF } from 'jspdf';
 import { pack, Document, Packer, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart as RechartsPie, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart as RechartsPie, Pie, Cell, AreaChart, Area, LineChart, Line, Legend } from 'recharts';
 
 const App = () => {
   const [file, setFile] = useState(null);
@@ -1008,25 +1008,72 @@ const App = () => {
                           </>
                         ) : chartData ? (
                           <div className="w-full h-full flex flex-col pt-4">
-                            <h4 className="text-[11px] uppercase tracking-widest font-black text-blue-500 mb-6">{chartData.title || 'Análise Financeira Automatizada'}</h4>
-                            <div className="flex-1 min-h-[300px]">
-                              <ResponsiveContainer width="100%" height="80%">
+                            <div className="flex justify-between items-start mb-6">
+                              <div>
+                                <h4 className="text-[11px] uppercase tracking-widest font-black text-blue-500">{chartData.title || 'Análise de Métrica'}</h4>
+                                <p className="text-[8px] text-muted uppercase font-bold mt-1 tracking-tighter">Motor Neural Llama 3.1 • {chartData.type || 'Padrão'}</p>
+                              </div>
+                              <div className="px-2 py-1 bg-blue-500/10 border border-blue-500/20 rounded text-[8px] font-black text-blue-500 uppercase tracking-widest">Live Preview</div>
+                            </div>
+
+                            <div className="flex-1 min-h-[320px] relative">
+                              <ResponsiveContainer width="100%" height="100%">
                                 {chartData.type === 'pie' ? (
-                                  <RechartsPie data={chartData.data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80}>
-                                    {chartData.data.map((_, i) => <Cell key={i} fill={['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899'][i % 5]} />)}
+                                  <RechartsPie data={chartData.data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5}>
+                                    {chartData.data.map((_, i) => <Cell key={i} fill={['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'][i % 6]} stroke="rgba(255,255,255,0.1)" />)}
+                                    <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #1e3a8a', borderRadius: '12px', fontSize: '11px', color: '#fff' }} />
                                   </RechartsPie>
+                                ) : chartData.type === 'line' ? (
+                                  <LineChart data={chartData.data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
+                                    <XAxis dataKey="name" stroke="#ffffff30" fontSize={9} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#ffffff30" fontSize={9} tickLine={false} axisLine={false} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #1e3a8a', borderRadius: '12px', fontSize: '11px', color: '#fff' }} />
+                                    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                                  </LineChart>
+                                ) : chartData.type === 'area' ? (
+                                  <AreaChart data={chartData.data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                                    <defs>
+                                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                      </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
+                                    <XAxis dataKey="name" stroke="#ffffff30" fontSize={9} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#ffffff30" fontSize={9} tickLine={false} axisLine={false} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #1e3a8a', borderRadius: '12px', fontSize: '11px', color: '#fff' }} />
+                                    <Area type="monotone" dataKey="value" stroke="#3b82f6" fillOpacity={1} fill="url(#colorValue)" strokeWidth={2} />
+                                  </AreaChart>
                                 ) : (
-                                  <BarChart data={chartData.data} margin={{ top: 20, right: 20, left: -20, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                                    <XAxis dataKey="name" stroke="#ffffff40" fontSize={9} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#ffffff40" fontSize={9} tickLine={false} axisLine={false} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #1e3a8a', borderRadius: '12px', fontSize: '11px', color: '#fff' }} itemStyle={{ color: '#3b82f6' }} />
-                                    <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                                  <BarChart data={chartData.data} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
+                                    <XAxis dataKey="name" stroke="#ffffff30" fontSize={9} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#ffffff30" fontSize={9} tickLine={false} axisLine={false} />
+                                    <Tooltip cursor={{ fill: '#ffffff05' }} contentStyle={{ backgroundColor: '#050505', border: '1px solid #1e3a8a', borderRadius: '12px', fontSize: '11px', color: '#fff' }} itemStyle={{ color: '#3b82f6' }} />
+                                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                      {chartData.data.map((_, i) => <Cell key={i} fill={i % 2 === 0 ? '#3b82f6' : '#8b5cf6'} />)}
+                                    </Bar>
                                   </BarChart>
                                 )}
                               </ResponsiveContainer>
                             </div>
-                            <p className="text-[8px] mt-auto font-black uppercase text-muted tracking-widest pt-4 border-t border-white/5">Visualização gerada por RNA</p>
+
+                            <div className="mt-8 grid grid-cols-2 gap-4">
+                              <div className="panel p-4 border-white/5 bg-white/[0.02]">
+                                <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">Ponto Mais Alto</p>
+                                <p className="text-sm font-black text-main">{Math.max(...chartData.data.map(d => d.value))}</p>
+                              </div>
+                              <div className="panel p-4 border-white/5 bg-white/[0.02]">
+                                <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">Média Neural</p>
+                                <p className="text-sm font-black text-blue-500">{(chartData.data.reduce((a, b) => a + b.value, 0) / chartData.data.length).toFixed(1)}</p>
+                              </div>
+                            </div>
+
+                            <p className="text-[8px] mt-6 font-black uppercase text-muted tracking-widest pt-4 border-t border-white/5 flex items-center justify-between opacity-50">
+                              <span>Visualização gerada por RNA</span>
+                              <span>ID: {Math.random().toString(36).substr(2, 9).toUpperCase()}</span>
+                            </p>
                           </div>
                         ) : (
                           <div className="flex flex-col items-center gap-4 opacity-50">
