@@ -395,21 +395,26 @@ app.delete('/api/ocr/:id', authenticate, async (req, res) => {
 
 // ===================== AI ROUTES =====================
 app.post('/api/ai/chat', authenticate, async (req, res) => {
-    const { documentText, query } = req.body;
+    const { documentText, query, chatHistory } = req.body;
     console.log('[AI/CHAT] Pedido recebido. Query:', query?.substring(0, 80));
-    console.log('[AI/CHAT] HF_TOKEN presente:', !!process.env.HF_TOKEN);
-    console.log('[AI/CHAT] Texto de documento (primeiros 100 chars):', documentText?.substring(0, 100));
 
     try {
-        const prompt = `System: You are MUV Neural Guide, an AI assistant analyzing a document.\n\nDocument Text: ${documentText?.substring(0, 1500) || ''}\n\nUser Question: ${query}\n\nAnswer concisely based on the document:`;
+        const messages = [
+            { role: 'system', content: 'You are MUV Neural Guide, an AI assistant analyzing a document. Answer concisely based on the document provided and the current conversation.' }
+        ];
 
-        console.log('[AI/CHAT] A chamar model Llama 3.1 via ChatCompletion...');
+        if (chatHistory && chatHistory.length > 0) {
+            chatHistory.forEach(msg => {
+                messages.push({ role: msg.sender === 'user' ? 'user' : 'assistant', content: msg.text });
+            });
+        }
+
+        messages.push({ role: 'user', content: `Document Context: ${documentText?.substring(0, 1500) || ''}\n\nQuestion: ${query}` });
+
+        console.log('[AI/CHAT] A chamar model Llama 3.1 com histórico...');
         const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
-            messages: [
-                { role: 'system', content: 'You are MUV Neural Guide, an AI assistant analyzing a document. Answer concisely based on the document provided.' },
-                { role: 'user', content: `Document Context: ${documentText?.substring(0, 1500) || ''}\n\nQuestion: ${query}` }
-            ],
+            messages,
             max_tokens: 250,
             temperature: 0.5,
         });
@@ -424,19 +429,18 @@ app.post('/api/ai/chat', authenticate, async (req, res) => {
 });
 
 app.post('/api/ai/analyze-chart', authenticate, async (req, res) => {
-    const { documentText } = req.body;
-    console.log('[AI/CHART] Pedido recebido.');
-    console.log('[AI/CHART] HF_TOKEN presente:', !!process.env.HF_TOKEN);
+    const { documentText, chatHistory } = req.body;
+    console.log('[AI/CHART] Pedido recebido com contexto de chat.');
 
     try {
-        const prompt = `System: Analyze the numbers in this text and create a JSON object for a chart. Format: {"title":"Values","type":"bar","data":[{"name":"Item","value":100}]}. Use real data from the text if available. Output ONLY valid JSON, nothing else.\n\nText: ${documentText?.substring(0, 500) || ''}\n\nJSON Output:`;
+        const historyContext = chatHistory?.map(m => `${m.sender}: ${m.text}`).join('\n') || 'None';
 
-        console.log('[AI/CHART] A chamar model Llama 3.1 via ChatCompletion...');
+        console.log('[AI/CHART] A chamar model Llama 3.1 para análise contextual...');
         const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
             messages: [
-                { role: 'system', content: 'You are a financial data analyst. Extract numerical data from the text and choose the BEST visualization type: "bar", "line", "area", or "pie". Return ONLY a JSON object: {"title":"Short Title","type":"bar|line|area|pie","data":[{"name":"label","value":100}]}. Use real labels and values from the text. If no clear data exists, create a plausible example based on the text context.' },
-                { role: 'user', content: `Extract metrics from this document text: ${documentText?.substring(0, 1000) || ''}` }
+                { role: 'system', content: 'You are a financial data analyst. Extract numerical data from the text. IMPORTANT: Prioritize details mentioned in the chat discussion. Choose the BEST visualization type: "bar", "line", "area", or "pie". Return ONLY valid JSON: {"title":"Short Title","type":"bar|line|area|pie","data":[{"name":"label","value":100}]}.' },
+                { role: 'user', content: `Chat Discussion Context:\n${historyContext}\n\nDocument Text:\n${documentText?.substring(0, 1000) || ''}\n\nExtract the most relevant data for a chart based on this discussion and document.` }
             ],
             max_tokens: 400,
             temperature: 0.1,

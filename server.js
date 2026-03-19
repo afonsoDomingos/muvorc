@@ -382,13 +382,23 @@ app.delete('/api/ocr/:id', authenticate, async (req, res) => {
 // AI Routes
 app.post('/api/ai/chat', authenticate, async (req, res) => {
     try {
-        const { documentText, query } = req.body;
+        const { documentText, query, chatHistory } = req.body;
+        const messages = [
+            { role: 'system', content: 'You are MUV Neural Guide, an AI assistant. Answer concisely based on the document provided and the ongoing discussion.' }
+        ];
+
+        // Add history for context
+        if (chatHistory && chatHistory.length > 0) {
+            chatHistory.forEach(msg => {
+                messages.push({ role: msg.sender === 'user' ? 'user' : 'assistant', content: msg.text });
+            });
+        }
+
+        messages.push({ role: 'user', content: `Document Context: ${documentText?.substring(0, 1500) || ''}\n\nQuestion: ${query}` });
+
         const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
-            messages: [
-                { role: 'system', content: 'You are MUV Neural Guide, an AI assistant analyzing a document. Answer concisely based on the document provided.' },
-                { role: 'user', content: `Document Context: ${documentText?.substring(0, 1500) || ''}\n\nQuestion: ${query}` }
-            ],
+            messages,
             max_tokens: 250,
             temperature: 0.5,
         });
@@ -404,12 +414,14 @@ app.post('/api/ai/chat', authenticate, async (req, res) => {
 
 app.post('/api/ai/analyze-chart', authenticate, async (req, res) => {
     try {
-        const { documentText } = req.body;
+        const { documentText, chatHistory } = req.body;
+        const historyContext = chatHistory?.map(m => `${m.sender}: ${m.text}`).join('\n') || 'None';
+
         const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
             messages: [
-                { role: 'system', content: 'You are a financial data analyst. Extract numerical data from the text and choose the BEST visualization type: "bar", "line", "area", or "pie". Return ONLY a JSON object: {"title":"Short Title","type":"bar|line|area|pie","data":[{"name":"label","value":100}]}. Use real labels and values from the text. If no clear data exists, create a plausible example based on the text context.' },
-                { role: 'user', content: `Extract metrics from this document text: ${documentText?.substring(0, 1000) || ''}` }
+                { role: 'system', content: 'You are a financial data analyst. Extract numerical data from the text. IMPORTANT: Prioritize the latest details discussed in the chat history if they refine the document data. Choose the BEST visualization type: "bar", "line", "area", or "pie". Return ONLY a JSON object: {"title":"Short Title","type":"bar|line|area|pie","data":[{"name":"label","value":100}]}.' },
+                { role: 'user', content: `Chat Discussion Context:\n${historyContext}\n\nBase Document Text:\n${documentText?.substring(0, 1000) || ''}\n\nExtract the most relevant data for a chart based on this context.` }
             ],
             max_tokens: 400,
             temperature: 0.1,

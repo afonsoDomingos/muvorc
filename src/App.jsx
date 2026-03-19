@@ -289,8 +289,20 @@ const App = () => {
     setChatLoading(true);
 
     try {
-      const res = await axios.post('/api/ai/chat', { documentText: result, query: userMsg }, { headers: { Authorization: `Bearer ${token}` } });
-      setChatMessages(prev => [...prev, { text: res.data.answer, sender: 'ai' }]);
+      const res = await axios.post('/api/ai/chat', {
+        documentText: result,
+        query: userMsg,
+        chatHistory: chatMessages.slice(-5) // Send last few messages for context
+      }, { headers: { Authorization: `Bearer ${token}` } });
+
+      const answer = res.data.answer;
+      setChatMessages(prev => [...prev, { text: answer, sender: 'ai' }]);
+
+      // Auto-trigger chart sync if the response mentions data or chart
+      if (answer.toLowerCase().includes('{') && answer.toLowerCase().includes('data')) {
+        showNotify('Detectando novos dados... Sincronizando gráfico', 'info');
+        generateChart(true); // Forced sync with chat context
+      }
     } catch (err) {
       setChatMessages(prev => [...prev, { text: 'Erro ao interagir com o motor neural de I.A. Tente novamente.', sender: 'system' }]);
     } finally {
@@ -298,16 +310,20 @@ const App = () => {
     }
   };
 
-  const generateChart = async () => {
+  const generateChart = async (isSync = false) => {
     if (!result) return;
     setAiMode('chart');
-    if (chartData) return;
+    if (chartData && !isSync) return; // Only skip if already have data and NOT a forced sync
     setChartLoading(true);
     try {
-      const res = await axios.post('/api/ai/analyze-chart', { documentText: result }, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.post('/api/ai/analyze-chart', {
+        documentText: result,
+        chatHistory: chatMessages.slice(-6) // Send context to enrich data extraction
+      }, { headers: { Authorization: `Bearer ${token}` } });
       setChartData(res.data);
+      if (isSync) showNotify('Dashboard Sincronizado com o Chat');
     } catch (err) {
-      showNotify('Erro ao gerar análise financeira visual', 'error');
+      showNotify('Erro ao sincronizar análise visual', 'error');
     } finally {
       setChartLoading(false);
     }
