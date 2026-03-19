@@ -1003,20 +1003,32 @@ const App = () => {
                           {isEditing ? <CheckCircle2 className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
                         </button>
 
-                        <div className="relative group/download">
-                          <button className="p-3 bg-white/5 text-white/40 hover:text-white rounded-xl transition-all flex items-center gap-2 group/btn">
-                            <Download className="w-4 h-4" />
-                            <ChevronDown className="w-3 h-3 opacity-50 group-hover/btn:opacity-100" />
-                          </button>
-                          <div className="absolute right-0 top-full mt-2 w-48 glass border-white/5 opacity-0 group-hover/download:opacity-100 scale-95 group-hover/download:scale-100 pointer-events-none group-hover/download:pointer-events-auto transition-all z-[100] shadow-2xl bg-[#0a0a0a]">
-                            <div onClick={exportToPDF} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer border-b border-white/5 transition-all text-white/70 hover:text-white">Download PDF</div>
-                            <div onClick={exportToWord} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer border-b border-white/5 transition-all text-white/70 hover:text-white">Download Word</div>
-                            <div onClick={exportToExcel} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer transition-all text-white/70 hover:text-white flex items-center gap-2 group/smart">
-                              Excel (Smart Extract)
-                              <Sparkles className="w-3 h-3 text-blue-500 opacity-0 group-hover/smart:opacity-100 transition-opacity" />
-                            </div>
-                          </div>
-                        </div>
+                        <button
+                          onClick={exportToPDF}
+                          className="px-4 py-3 bg-white/5 text-white/40 hover:text-white hover:bg-blue-500/10 rounded-xl transition-all border border-white/10 flex items-center gap-2 group/pdf"
+                          title="Exportar PDF"
+                        >
+                          <FileText className="w-4 h-4 text-red-400 group-hover/pdf:scale-110 transition-transform" />
+                          <span className="text-[9px] font-black uppercase tracking-widest hidden xl:inline">PDF</span>
+                        </button>
+
+                        <button
+                          onClick={exportToWord}
+                          className="px-4 py-3 bg-white/5 text-white/40 hover:text-white hover:bg-blue-500/10 rounded-xl transition-all border border-white/10 flex items-center gap-2 group/word"
+                          title="Exportar Word"
+                        >
+                          <FileCode className="w-4 h-4 text-blue-400 group-hover/word:scale-110 transition-transform" />
+                          <span className="text-[9px] font-black uppercase tracking-widest hidden xl:inline">DOCX</span>
+                        </button>
+
+                        <button
+                          onClick={exportToExcel}
+                          className="px-4 py-3 bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white rounded-xl transition-all border border-blue-500/30 flex items-center gap-2 group/excel shadow-lg shadow-blue-500/5 marker:animate-pulse"
+                          title="Exportar Excel Inteligente"
+                        >
+                          <Sparkles className="w-4 h-4 group-hover/excel:rotate-12 transition-transform" />
+                          <span className="text-[9px] font-black uppercase tracking-widest">Excel Smart</span>
+                        </button>
 
                         <button onClick={() => { navigator.clipboard.writeText(result); showNotify('Copiado!'); }} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-white transition-all"><Copy className="w-4 h-4" /></button>
                       </>
