@@ -1065,13 +1065,17 @@ const App = () => {
                               className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500/50 transition-all placeholder:text-muted/30"
                             />
                           </div>
-                          <div className="flex gap-2 shrink-0">
-                            <button onClick={() => copyTableAs('markdown')} className="px-3 py-1.5 glass bg-white/5 border-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2">
-                              <Copy className="w-3 h-3" /> MD
-                            </button>
-                            <button onClick={() => copyTableAs('csv')} className="px-3 py-1.5 glass bg-white/5 border-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2">
-                              <Database className="w-3 h-3" /> CSV
-                            </button>
+                        <div className="flex gap-2 shrink-0">
+                            {Array.isArray(tableData) && tableData.length > 0 && (
+                              <>
+                                <button onClick={() => copyTableAs('markdown')} className="px-3 py-1.5 glass bg-white/5 border-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2">
+                                  <Copy className="w-3 h-3" /> MD
+                                </button>
+                                <button onClick={() => copyTableAs('csv')} className="px-3 py-1.5 glass bg-white/5 border-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2">
+                                  <Database className="w-3 h-3" /> CSV
+                                </button>
+                              </>
+                            )}
                             <div className="w-[1px] h-6 bg-white/10 mx-2" />
                             {[
                               { id: 'neural', label: 'Noir' },
@@ -1090,10 +1094,11 @@ const App = () => {
                           </div>
                         </div>
 
-                        <table className={`w-full border-collapse text-[11px] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 ${tableStyle === 'neural' ? 'bg-white/[0.02] backdrop-blur-xl' :
-                            tableStyle === 'minimal' ? 'bg-white/[0.05]' :
-                              tableStyle === 'zebra' ? 'bg-black/20' : 'bg-transparent border-gray-400/20'
-                          }`}>
+                        {Array.isArray(tableData) && tableData.length > 0 ? (
+                          <table className={`w-full border-collapse text-[11px] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 ${tableStyle === 'neural' ? 'bg-white/[0.02] backdrop-blur-xl' :
+                              tableStyle === 'minimal' ? 'bg-white/[0.05]' :
+                                tableStyle === 'zebra' ? 'bg-black/20' : 'bg-transparent border-gray-400/20'
+                            }`}>
                           <thead>
                             <tr className={`border-b border-white/10 ${tableStyle === 'neural' ? 'bg-gradient-to-r from-blue-600/20 via-blue-900/10 to-transparent' :
                                 tableStyle === 'grid' ? 'bg-gray-500/10 border-gray-400' : 'bg-white/5'
@@ -1141,6 +1146,20 @@ const App = () => {
                             ))}
                           </tbody>
                         </table>
+                        ) : tableLoading ? (
+                           <div className="py-20 flex flex-col items-center justify-center gap-4 opacity-50">
+                              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                              <span className="text-[10px] font-black uppercase tracking-[0.4em]">Sincronizando Matriz Neural...</span>
+                           </div>
+                        ) : (
+                          <div className="py-20 border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center gap-4 opacity-40">
+                             <Database className="w-12 h-12 text-blue-500" />
+                             <div className="text-center">
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] mb-1">Nenhuma Estrutura Detectada</h4>
+                                <p className="text-[8px] font-bold uppercase tracking-widest leading-relaxed max-w-[250px]">Tente mudar o modo de extração ou verifique a qualidade da imagem para reconstrução.</p>
+                             </div>
+                          </div>
+                        )}
                         <div className="mt-6 p-5 glass bg-blue-500/5 border border-blue-500/20 rounded-2xl flex items-center justify-between group">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform">

@@ -39,7 +39,7 @@ const UserSchema = new mongoose.Schema({
     subscription: { type: String, default: 'LOCAL' }, // LOCAL, HYPER, NEURAL
     companyLogo: String,
     createdAt: { type: Date, default: Date.now },
-    lastActive: { type: Date, default: Date.now }
+    lastActive: { type: Date, default: Date.now },
 });
 
 const OCRSchema = new mongoose.Schema({
@@ -494,13 +494,17 @@ app.post('/api/ai/extract-table', authenticate, async (req, res) => {
         const jsonEnd = textRes.lastIndexOf(']');
 
         if (jsonStart !== -1 && jsonEnd !== -1) {
-            const tableData = JSON.parse(textRes.substring(jsonStart, jsonEnd + 1));
-            return res.json(tableData);
+            try {
+                const tableData = JSON.parse(textRes.substring(jsonStart, jsonEnd + 1));
+                return res.json(tableData);
+            } catch (e) {
+                console.error("Parse Error:", e);
+            }
         }
         res.status(400).json({ error: 'Falha ao detetar estrutura de tabela' });
     } catch (error) {
-        console.error('AI Table Error:', error);
-        res.status(500).json({ error: 'Erro no motor neural de extração' });
+        console.error('Table extraction error:', error);
+        res.status(500).json({ error: 'Erro ao extrair tabela' });
     }
 });
 

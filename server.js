@@ -472,16 +472,19 @@ app.post('/api/ai/extract-table', authenticate, async (req, res) => {
             max_tokens: 1200,
             temperature: 0.1,
         });
-
         const textRes = response.choices[0].message.content.trim();
         const jsonStart = textRes.indexOf('[');
         const jsonEnd = textRes.lastIndexOf(']');
 
         if (jsonStart !== -1 && jsonEnd !== -1) {
-            const tableData = JSON.parse(textRes.substring(jsonStart, jsonEnd + 1));
-            return res.json(tableData);
+            try {
+                const tableData = JSON.parse(textRes.substring(jsonStart, jsonEnd + 1));
+                return res.json(tableData);
+            } catch (e) {
+                console.error("Parse Error:", e);
+            }
         }
-        res.status(400).json({ error: 'Falha ao detetar estrutura de tabela' });
+        res.status(400).json({ error: 'Falha ao detetar estrutura de tabela válida. Tente mudar o modo ou a resolução.' });
     } catch (error) {
         console.error('AI Table Error:', error);
         res.status(500).json({ error: 'Erro no motor neural de extração' });
