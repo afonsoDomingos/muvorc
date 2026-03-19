@@ -65,6 +65,8 @@ const App = () => {
   const [tableData, setTableData] = useState(null);
   const [tableLoading, setTableLoading] = useState(false);
   const [viewMode, setViewMode] = useState('text'); // 'text' or 'table'
+  const [tableStyle, setTableStyle] = useState('neural'); // neural, minimal, zebra, grid
+  const [tableMode, setTableMode] = useState('STANDARD'); // STANDARD, INVOICE, LOGISTICS, TIMELINE
   const chatEndRef = useRef(null);
   const aiPanelRef = useRef(null);
 
@@ -353,13 +355,13 @@ const App = () => {
     if (!result) return;
     setTableLoading(true);
     try {
-      showNotify('Motor Neural: Analisando estrutura de tabela...', 'info');
-      const res = await axios.post('/api/ai/extract-table', { documentText: result }, { headers: { Authorization: `Bearer ${token}` } });
+      showNotify(`Motor Neural: Extraindo em modo ${tableMode}...`, 'info');
+      const res = await axios.post('/api/ai/extract-table', { documentText: result, mode: tableMode }, { headers: { Authorization: `Bearer ${token}` } });
       setTableData(res.data);
       setViewMode('table');
       showNotify('Tabela Neural Identificada!');
     } catch (err) {
-      showNotify('Não foi possível identificar uma tabela clara', 'error');
+      showNotify('Não foi possível identificar uma estrutura clara', 'error');
     } finally {
       setTableLoading(false);
     }
@@ -934,13 +936,25 @@ const App = () => {
                           >
                             Texto
                           </button>
-                          <button
-                            onClick={tableData ? () => setViewMode('table') : detectTable}
-                            className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === 'table' ? 'bg-blue-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
-                          >
-                            {tableLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <PieChart className="w-3 h-3" />}
-                            Tabela
-                          </button>
+                          <div className="flex items-center gap-1 ml-1 bg-black/20 rounded-lg pr-2 group/modes">
+                            <select
+                              value={tableMode}
+                              onChange={(e) => setTableMode(e.target.value)}
+                              className="bg-transparent text-[8px] font-black uppercase tracking-tighter text-blue-400 px-3 py-1 cursor-pointer outline-none border-none"
+                            >
+                              <option value="STANDARD">Padrão</option>
+                              <option value="INVOICE">Finanças</option>
+                              <option value="LOGISTICS">Logística</option>
+                              <option value="TIMELINE">Histórico</option>
+                            </select>
+                            <button
+                              onClick={tableData && !tableLoading ? () => setViewMode('table') : detectTable}
+                              className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === 'table' ? 'bg-blue-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                            >
+                              {tableLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <PieChart className="w-3 h-3" />}
+                              Scanner
+                            </button>
+                          </div>
                         </div>
 
                         <button
@@ -990,25 +1004,49 @@ const App = () => {
                       />
                     ) : viewMode === 'table' && tableData ? (
                       <div className="overflow-x-auto custom-scrollbar-h p-1">
-                        <table className="w-full border-collapse text-[11px] bg-white/[0.02] backdrop-blur-xl rounded-2xl overflow-hidden border border-white/5 shadow-2xl">
+                        <div className="flex justify-end gap-2 mb-4">
+                          {[
+                            { id: 'neural', label: 'Noir' },
+                            { id: 'minimal', label: 'Minimal' },
+                            { id: 'zebra', label: 'Corporate' },
+                            { id: 'grid', label: 'Classic' }
+                          ].map(s => (
+                            <button
+                              key={s.id}
+                              onClick={() => setTableStyle(s.id)}
+                              className={`px-3 py-1 text-[7px] font-bold uppercase tracking-widest rounded-full border transition-all ${tableStyle === s.id ? 'bg-blue-500 text-white border-blue-400' : 'bg-transparent text-muted border-white/10 hover:border-white/20'}`}
+                            >
+                              {s.label}
+                            </button>
+                          ))}
+                        </div>
+                        <table className={`w-full border-collapse text-[11px] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 ${tableStyle === 'neural' ? 'bg-white/[0.02] backdrop-blur-xl' :
+                            tableStyle === 'minimal' ? 'bg-white/[0.05]' :
+                              tableStyle === 'zebra' ? 'bg-black/20' : 'bg-transparent border-gray-400/20'
+                          }`}>
                           <thead>
-                            <tr className="bg-gradient-to-r from-blue-600/20 via-blue-900/10 to-transparent border-b border-white/10">
+                            <tr className={`border-b border-white/10 ${tableStyle === 'neural' ? 'bg-gradient-to-r from-blue-600/20 via-blue-900/10 to-transparent' :
+                                tableStyle === 'grid' ? 'bg-gray-500/10 border-gray-400' : 'bg-white/5'
+                              }`}>
                               {Object.keys(tableData[0] || {}).map(key => (
-                                <th key={key} className="p-4 text-blue-400 font-black uppercase tracking-[0.2em] text-left relative overflow-hidden group">
+                                <th key={key} className={`p-4 font-black uppercase tracking-[0.2em] text-left relative overflow-hidden group ${tableStyle === 'grid' ? 'border border-white/10' : ''} ${tableStyle === 'neural' ? 'text-blue-400' : 'text-white'}`}>
                                   <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                   <span className="relative z-10 flex items-center gap-2">
-                                    <div className="w-1 h-1 rounded-full bg-blue-500/40" />
+                                    <div className={`w-1 h-1 rounded-full ${tableStyle === 'neural' ? 'bg-blue-500/40' : 'bg-white/20'}`} />
                                     {key}
                                   </span>
                                 </th>
                               ))}
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-white/5">
+                          <tbody className={`${tableStyle === 'zebra' ? 'divide-y divide-white/5' : ''}`}>
                             {tableData.map((row, i) => (
-                              <tr key={i} className="hover:bg-blue-500/10 even:bg-white/[0.03] transition-all group/row">
+                              <tr key={i} className={`transition-all group/row ${tableStyle === 'neural' ? 'hover:bg-blue-500/10 even:bg-white/[0.03]' :
+                                  tableStyle === 'zebra' ? 'even:bg-white/[0.05] hover:bg-blue-500/5' :
+                                    tableStyle === 'minimal' ? 'hover:bg-white/10' : 'border border-white/10 hover:bg-white/5'
+                                }`}>
                                 {Object.values(row).map((val, j) => (
-                                  <td key={j} className="p-4 text-white/60 font-medium tracking-tight group-hover/row:text-white transition-colors">
+                                  <td key={j} className={`p-4 font-medium tracking-tight group-hover/row:text-white transition-colors ${tableStyle === 'grid' ? 'border border-white/10' : ''} ${tableStyle === 'neural' ? 'text-white/60' : 'text-white/80'}`}>
                                     {val}
                                   </td>
                                 ))}

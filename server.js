@@ -454,15 +454,22 @@ app.post('/api/ai/analyze-chart', authenticate, async (req, res) => {
 
 app.post('/api/ai/extract-table', authenticate, async (req, res) => {
     try {
-        const { documentText } = req.body;
+        const { documentText, mode } = req.body;
+        const modePrompts = {
+            INVOICE: 'You are a financial clerk. Focus on extracting items, quantities, unit prices, taxes, and totals from invoices or receipts.',
+            LOGISTICS: 'You are a supply chain analyst. Focus on extracting tracking numbers, origins, destinations, weights, and dates from shipping documents.',
+            TIMELINE: 'You are a project manager. Focus on extracting dates, times, events, and tasks in chronological order.',
+            STANDARD: 'You are a data structures expert. Extract all tabular data from the text.'
+        };
+        const systemPrompt = modePrompts[mode] || modePrompts.STANDARD;
 
         const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
             messages: [
-                { role: 'system', content: 'You are a super-intelligent data extraction engine. Analyze the text and identify tabular structures, lists, or key-value pairs. Even if the text is unaligned or noisy from OCR, reconstruct the logical table structure. Format it as a JSON ARRAY of OBJECTS where each object is a row. Return ONLY the JSON array, no conversational text or preamble.' },
-                { role: 'user', content: `Extract table/data from this document text: ${documentText?.substring(0, 4000) || ''}` }
+                { role: 'system', content: `${systemPrompt} Even if the text is noisy or unaligned from OCR, reconstruct the logical table structure. Format it as a JSON ARRAY of OBJECTS where each object is a row. Return ONLY the JSON array, no preamble.` },
+                { role: 'user', content: `Extract data using ${mode || 'STANDARD'} mode from this text: ${documentText?.substring(0, 4000) || ''}` }
             ],
-            max_tokens: 1000,
+            max_tokens: 1200,
             temperature: 0.1,
         });
 
