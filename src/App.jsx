@@ -399,12 +399,13 @@ const App = () => {
   const generateChart = async (isSync = false) => {
     if (!result) return;
     setAiMode('chart');
-    if (chartData && !isSync) return; // Only skip if already have data and NOT a forced sync
+    if (chartData && !isSync && !tableSearchTerm) return; // Skip if have data, not sync and not searching
     setChartLoading(true);
     try {
       const res = await axios.post('/api/ai/analyze-chart', {
         documentText: result,
-        chatHistory: chatMessages.slice(-6) // Send context to enrich data extraction
+        chatHistory: chatMessages.slice(-6),
+        searchTerm: tableSearchTerm 
       }, { headers: { Authorization: `Bearer ${token}` } });
       setChartData(res.data);
       if (isSync) showNotify('Dashboard Sincronizado com o Chat');

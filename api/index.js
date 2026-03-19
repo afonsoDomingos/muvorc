@@ -458,18 +458,24 @@ app.post('/api/ai/chat', authenticate, async (req, res) => {
 });
 
 app.post('/api/ai/analyze-chart', authenticate, async (req, res) => {
-    const { documentText, chatHistory } = req.body;
-
     try {
+        const { documentText, chatHistory, searchTerm } = req.body;
         const historyContext = chatHistory?.map(m => `${m.sender}: ${m.text}`).join('\n') || 'None';
 
         const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
             messages: [
-                { role: 'system', content: 'You are a financial data analyst. Extract numerical data from the text. IMPORTANT: Prioritize details mentioned in the chat discussion. Choose the BEST visualization type: "bar", "line", "area", or "pie". Return ONLY valid JSON: {"title":"Short Title","type":"bar|line|area|pie","data":[{"name":"label","value":100}]}.' },
-                { role: 'user', content: `Chat Discussion Context:\n${historyContext}\n\nDocument Text:\n${documentText?.substring(0, 1000) || ''}\n\nExtract the most relevant data for a chart based on this discussion and document.` }
+                { 
+                    role: 'system', 
+                    content: `You are a data visualization expert. Extract numerical data from the document. 
+                    CRITICAL: If a searchTerm is provided ("${searchTerm || 'None'}"), you MUST ONLY extract data related to that search.
+                    Also prioritize details from the Chat History.
+                    Visualization type: "bar", "line", "area", or "pie".
+                    Return ONLY VALID JSON: {"title":"Data for ${searchTerm || 'Analysis'}","type":"bar","data":[{"name":"Item","value":100}]}.` 
+                },
+                { role: 'user', content: `Search Term: ${searchTerm || 'None'}\n\nChat Context: ${historyContext}\n\nDocument: ${documentText?.substring(0, 4000) || ''}` }
             ],
-            max_tokens: 400,
+            max_tokens: 500,
             temperature: 0.1,
         });
 
@@ -481,18 +487,13 @@ app.post('/api/ai/analyze-chart', authenticate, async (req, res) => {
             const chartData = JSON.parse(textRes.substring(jsonStart, jsonEnd + 1));
             return res.json(chartData);
         }
-        throw new Error('A IA não devolveu JSON válido');
+        throw new Error('Neural model returned garbage.');
     } catch (error) {
         console.error('AI Chart Error:', error);
         res.json({
-            title: "Resultados Automáticos (Fallback)",
+            title: searchTerm ? `Nenhum dado para "${searchTerm}"` : "Análise não disponível",
             type: "bar",
-            data: [
-                { name: "Receitas", value: 12500 },
-                { name: "Despesas", value: 4300 },
-                { name: "Impostos", value: 3100 },
-                { name: "Lucro", value: 5100 }
-            ]
+            data: [{ name: "Sem Dados", value: 0 }]
         });
     }
 });
