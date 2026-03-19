@@ -62,6 +62,9 @@ const App = () => {
   const [chatLoading, setChatLoading] = useState(false);
   const [chartData, setChartData] = useState(null);
   const [chartLoading, setChartLoading] = useState(false);
+  const [tableData, setTableData] = useState(null);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [viewMode, setViewMode] = useState('text'); // 'text' or 'table'
   const chatEndRef = useRef(null);
   const aiPanelRef = useRef(null);
 
@@ -343,6 +346,22 @@ const App = () => {
       showNotify('Erro ao sincronizar análise visual', 'error');
     } finally {
       setChartLoading(false);
+    }
+  };
+
+  const detectTable = async () => {
+    if (!result) return;
+    setTableLoading(true);
+    try {
+      showNotify('Motor Neural: Analisando estrutura de tabela...', 'info');
+      const res = await axios.post('/api/ai/extract-table', { documentText: result }, { headers: { Authorization: `Bearer ${token}` } });
+      setTableData(res.data);
+      setViewMode('table');
+      showNotify('Tabela Neural Identificada!');
+    } catch (err) {
+      showNotify('Não foi possível identificar uma tabela clara', 'error');
+    } finally {
+      setTableLoading(false);
     }
   };
 
@@ -906,6 +925,24 @@ const App = () => {
                           <span className="text-[9px] font-black uppercase tracking-widest hidden md:inline">Neural Agent</span>
                         </button>
 
+                        <div className="h-10 w-[1px] bg-white/10 hidden md:block" />
+
+                        <div className="flex bg-white/5 rounded-xl p-1">
+                          <button
+                            onClick={() => setViewMode('text')}
+                            className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'text' ? 'bg-blue-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                          >
+                            Texto
+                          </button>
+                          <button
+                            onClick={tableData ? () => setViewMode('table') : detectTable}
+                            className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === 'table' ? 'bg-blue-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                          >
+                            {tableLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <PieChart className="w-3 h-3" />}
+                            Tabela
+                          </button>
+                        </div>
+
                         <button
                           onClick={() => setIsEditing(!isEditing)}
                           className={`p-3 rounded-xl transition-all ${isEditing ? 'bg-blue-500 text-white' : 'bg-white/5 text-white/40 hover:text-white'}`}
@@ -951,6 +988,31 @@ const App = () => {
                         spellCheck="false"
                         placeholder="Edite o conteúdo aqui..."
                       />
+                    ) : viewMode === 'table' && tableData ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse border border-white/10 text-[11px]">
+                          <thead>
+                            <tr className="bg-white/5">
+                              {Object.keys(tableData[0] || {}).map(key => (
+                                <th key={key} className="p-3 border border-white/10 text-blue-500 uppercase tracking-widest text-left">{key}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {tableData.map((row, i) => (
+                              <tr key={i} className="hover:bg-blue-500/5 transition-colors">
+                                {Object.values(row).map((val, j) => (
+                                  <td key={j} className="p-3 border border-white/10 text-white/70">{val}</td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <div className="mt-4 p-4 glass bg-blue-500/5 border border-blue-500/20 rounded-xl flex items-center gap-3">
+                          <Sparkles className="w-4 h-4 text-blue-500" />
+                          <p className="text-[9px] font-bold text-blue-500/70 uppercase tracking-widest">Estrutura Neural Identificada com Llama 3.1</p>
+                        </div>
+                      </div>
                     ) : (
                       <Typewriter text={result} speed={2} />
                     )
