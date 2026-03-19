@@ -475,10 +475,10 @@ app.post('/api/ai/extract-table', authenticate, async (req, res) => {
         const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
             messages: [
-                { role: 'system', content: 'You are a data structures expert. Extract all tabular data from the text. Format it as a JSON ARRAY of OBJECTS where each row is an object. Use consistent keys based on table headers. Return ONLY the JSON array, no preamble.' },
-                { role: 'user', content: `Extract table from this text: ${documentText?.substring(0, 1500) || ''}` }
+                { role: 'system', content: 'You are a super-intelligent data extraction engine. Analyze the text and identify tabular structures, lists, or key-value pairs. Even if the text is unaligned or noisy from OCR, reconstruct the logical table structure. Format it as a JSON ARRAY of OBJECTS where each object is a row. Return ONLY the JSON array, no conversational text or preamble.' },
+                { role: 'user', content: `Extract table/data from this document text: ${documentText?.substring(0, 4000) || ''}` }
             ],
-            max_tokens: 800,
+            max_tokens: 1000,
             temperature: 0.1,
         });
 

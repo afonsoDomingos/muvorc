@@ -989,28 +989,47 @@ const App = () => {
                         placeholder="Edite o conteúdo aqui..."
                       />
                     ) : viewMode === 'table' && tableData ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse border border-white/10 text-[11px]">
+                      <div className="overflow-x-auto custom-scrollbar-h p-1">
+                        <table className="w-full border-collapse text-[11px] bg-white/[0.02] backdrop-blur-xl rounded-2xl overflow-hidden border border-white/5 shadow-2xl">
                           <thead>
-                            <tr className="bg-white/5">
+                            <tr className="bg-gradient-to-r from-blue-600/20 via-blue-900/10 to-transparent border-b border-white/10">
                               {Object.keys(tableData[0] || {}).map(key => (
-                                <th key={key} className="p-3 border border-white/10 text-blue-500 uppercase tracking-widest text-left">{key}</th>
+                                <th key={key} className="p-4 text-blue-400 font-black uppercase tracking-[0.2em] text-left relative overflow-hidden group">
+                                  <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                  <span className="relative z-10 flex items-center gap-2">
+                                    <div className="w-1 h-1 rounded-full bg-blue-500/40" />
+                                    {key}
+                                  </span>
+                                </th>
                               ))}
                             </tr>
                           </thead>
-                          <tbody>
+                          <tbody className="divide-y divide-white/5">
                             {tableData.map((row, i) => (
-                              <tr key={i} className="hover:bg-blue-500/5 transition-colors">
+                              <tr key={i} className="hover:bg-blue-500/10 even:bg-white/[0.03] transition-all group/row">
                                 {Object.values(row).map((val, j) => (
-                                  <td key={j} className="p-3 border border-white/10 text-white/70">{val}</td>
+                                  <td key={j} className="p-4 text-white/60 font-medium tracking-tight group-hover/row:text-white transition-colors">
+                                    {val}
+                                  </td>
                                 ))}
                               </tr>
                             ))}
                           </tbody>
                         </table>
-                        <div className="mt-4 p-4 glass bg-blue-500/5 border border-blue-500/20 rounded-xl flex items-center gap-3">
-                          <Sparkles className="w-4 h-4 text-blue-500" />
-                          <p className="text-[9px] font-bold text-blue-500/70 uppercase tracking-widest">Estrutura Neural Identificada com Llama 3.1</p>
+                        <div className="mt-6 p-5 glass bg-blue-500/5 border border-blue-500/20 rounded-2xl flex items-center justify-between group">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform">
+                              <Sparkles className="w-5 h-5 text-blue-500 animate-pulse" />
+                            </div>
+                            <div className="flex flex-col">
+                              <p className="text-[10px] font-black text-main uppercase tracking-[0.2em]">Sincronização Neural Ativa</p>
+                              <p className="text-[8px] font-bold text-muted uppercase tracking-widest opacity-60">Llama 3.1 • Reconstrução Lógica por Contexto</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="h-4 w-[1px] bg-white/10" />
+                            <span className="text-[8px] font-black text-blue-500/50 uppercase tracking-widest">Confidence: High</span>
+                          </div>
                         </div>
                       </div>
                     ) : (
