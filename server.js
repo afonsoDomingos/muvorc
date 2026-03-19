@@ -379,36 +379,66 @@ app.delete('/api/ocr/:id', authenticate, async (req, res) => {
     }
 });
 
-// AI Routes
+// ===================== AI ROUTES =====================
 app.post('/api/ai/chat', authenticate, async (req, res) => {
+    const { documentText, query, chatHistory } = req.body;
+    console.log('[AI/CHAT] Pedido recebido no Server Principal. Query:', query?.substring(0, 80));
+
     try {
-        const { documentText, query, chatHistory } = req.body;
         const messages = [
-            { role: 'system', content: 'You are MUV Neural Guide, an AI assistant. Answer concisely based on the document provided and the ongoing discussion.' }
+            { 
+                role: 'system', 
+                content: `You are MUV Neural Guide. analyze the document and answer the user. 
+                If the user asks to filter, list, extract or visualize specific data (e.g., "show expenses > 100", "list items from Dec"), you MUST provide the data in a structured way.
+                Response format:
+                {
+                  "answer": "Your text explanation here",
+                  "extractedTable": [{"Col1": "Val", "Col2": 123}], // Only if data was requested/filtered
+                  "extractedChart": {"title": "Title", "type": "bar|line|pie|area", "data": [{"name": "Label", "value": 100}]} // Only if analysis/chart requested
+                }
+                Return ONLY the JSON. No conversational preamble outside the JSON.` 
+            }
         ];
 
-        // Add history for context
         if (chatHistory && chatHistory.length > 0) {
             chatHistory.forEach(msg => {
                 messages.push({ role: msg.sender === 'user' ? 'user' : 'assistant', content: msg.text });
             });
         }
 
-        messages.push({ role: 'user', content: `Document Context: ${documentText?.substring(0, 1500) || ''}\n\nQuestion: ${query}` });
+        messages.push({ role: 'user', content: `Document Context: ${documentText?.substring(0, 4000) || ''}\n\nQuestion: ${query}` });
 
         const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
             messages,
-            max_tokens: 250,
-            temperature: 0.5,
+            max_tokens: 1000,
+            temperature: 0.2,
         });
 
-        const answer = response.choices[0].message.content.trim();
-        res.json({ answer });
+        const textRes = response.choices[0].message.content.trim();
+        console.log('[AI/CHAT] Resposta bruta recebida:', textRes.substring(0, 100));
+
+        let finalResponse = { answer: textRes };
+        const jsonStart = textRes.indexOf('{');
+        const jsonEnd = textRes.lastIndexOf('}');
+
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+            try {
+                const parsed = JSON.parse(textRes.substring(jsonStart, jsonEnd + 1));
+                finalResponse = {
+                    answer: parsed.answer || textRes,
+                    tableData: parsed.extractedTable || null,
+                    chartData: parsed.extractedChart || null
+                };
+            } catch (e) {
+                console.error("[AI/CHAT] Erro ao parsear JSON:", e);
+            }
+        }
+
+        res.json(finalResponse);
     } catch (error) {
-        console.error('AI Chat Error:', error);
-        // Fallback se a API falhar ou token não estiver configurado
-        res.json({ answer: 'O modelo de IA (OpenSource) requer que defina as variáveis no backend ou pode estar indisponível. Baseado nos meus dados locais de fallback, o documento parece estar processado corretamente. Verifique o uso de chave.' });
+        console.error('[AI/CHAT] SERVER ERROR:', error?.message || error);
+        res.json({ answer: `Erro ao interagir com o motor neural local.` });
     }
 });
 

@@ -72,9 +72,10 @@ const App = () => {
   const [chartLoading, setChartLoading] = useState(false);
   const [tableData, setTableData] = useState(null);
   const [tableLoading, setTableLoading] = useState(false);
-  const [viewMode, setViewMode] = useState('text'); // 'text' or 'table'
-  const [tableStyle, setTableStyle] = useState('neural'); // neural, minimal, zebra, grid
-  const [scannerMode, setScannerMode] = useState('PADRÃO'); // PADRÃO, TABELA, GRÁFICO
+  const [viewMode, setViewMode] = useState('text'); // 'text', 'table', 'chart'
+  const [tableStyle, setTableStyle] = useState('neural');
+  const [activeTableIndex, setActiveTableIndex] = useState(0);
+  const [scannerMode, setScannerMode] = useState('PADRÃO');
   const [tableSearchTerm, setTableSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const chatEndRef = useRef(null);
@@ -354,28 +355,40 @@ const App = () => {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!chatInput.trim() || !result) return;
-    const userMsg = chatInput;
-    setChatMessages(prev => [...prev, { text: userMsg, sender: 'user' }]);
-    setChatInput('');
+  const handleSendMessage = async (directQuery = null) => {
+    const queryToUse = directQuery !== null ? directQuery : chatInput;
+    if (!queryToUse.trim() || !result) return;
+    
+    setChatMessages(prev => [...prev, { text: queryToUse, sender: 'user' }]);
+    if (directQuery === null) setChatInput('');
     setChatLoading(true);
+    setShowAiPanel(true); // Open panel if it's a direct query from outside
 
     try {
       const res = await axios.post('/api/ai/chat', {
         documentText: result,
-        query: userMsg,
-        chatHistory: chatMessages.slice(-5) // Send last few messages for context
+        query: queryToUse,
+        chatHistory: chatMessages.slice(-5)
       }, { headers: { Authorization: `Bearer ${token}` } });
 
-      const answer = res.data.answer;
+      const { answer, tableData: newTableData, chartData: newChartData } = res.data;
       setChatMessages(prev => [...prev, { text: answer, sender: 'ai' }]);
 
-      // Auto-trigger chart sync if the response mentions data or chart
-      if (answer.toLowerCase().includes('{') && answer.toLowerCase().includes('data')) {
-        showNotify('Detectando novos dados... Sincronizando gráfico', 'info');
-        generateChart(true); // Forced sync with chat context
+      // Dinamic Table Update
+      if (newTableData && Array.isArray(newTableData) && newTableData.length > 0) {
+        showNotify('Tabela filtrada via Inteligência Neural', 'info');
+        setTableData([{ tableName: `Filtro: ${queryToUse.substring(0, 20)}...`, data: newTableData }]);
+        setActiveTableIndex(0);
+        setViewMode('table');
       }
+
+      // Dinamic Chart Update
+      if (newChartData && newChartData.data && newChartData.data.length > 0) {
+        showNotify('Gráfico gerado via análise de consulta', 'info');
+        setChartData(newChartData);
+        setViewMode('chart');
+      }
+      
     } catch (err) {
       setChatMessages(prev => [...prev, { text: 'Erro ao interagir com o motor neural de I.A. Tente novamente.', sender: 'system' }]);
     } finally {
@@ -416,17 +429,29 @@ const App = () => {
   const detectTable = async () => {
     if (!result) return;
     setTableLoading(true);
+    setActiveTableIndex(0);
     try {
-      showNotify(`Motor Neural: Reconstruindo Tabela...`, 'info');
+      showNotify(`Motor Neural: Identificando Estruturas...`, 'info');
       const res = await axios.post('/api/ai/extract-table', { documentText: result, mode: 'STANDARD' }, { headers: { Authorization: `Bearer ${token}` } });
-      const cleanData = Array.isArray(res.data) 
-        ? res.data.filter(r => r && typeof r === 'object' && !Array.isArray(r))
-        : [];
-      setTableData(cleanData);
+      
+      // Sanitização de Multi-Tabelas
+      let processedTables = [];
+      if (Array.isArray(res.data)) {
+        if (res.data[0]?.tableName && Array.isArray(res.data[0]?.data)) {
+            processedTables = res.data; // Já veio em formato multi-tabela
+        } else {
+            // Formato antigo/simples: Converter para o novo padrão
+            processedTables = [{ tableName: 'Tabela Principal', data: res.data.filter(r => typeof r === 'object') }];
+        }
+      } else if (res.data?.data) {
+        processedTables = [{ tableName: res.data.tableName || 'Tabela Neural', data: res.data.data }];
+      }
+
+      setTableData(processedTables);
       setViewMode('table');
-      showNotify('Tabela Gerada!');
+      showNotify(`${processedTables.length > 1 ? processedTables.length + ' Tabelas Encontradas' : 'Tabela Neural Gerada'}`);
     } catch (err) {
-      showNotify('Falha na extração de tabela.', 'error');
+      showNotify('Falha na extração de estruturas.', 'error');
     } finally {
       setTableLoading(false);
     }
@@ -459,71 +484,97 @@ const App = () => {
 
   const exportCurrentTableToExcel = () => {
     if (!tableData?.length) return;
-    const ws = XLSX.utils.json_to_sheet(tableData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "MUV_DATA");
-    XLSX.writeFile(wb, `${file?.name || 'MUV'}_table.xlsx`);
-    showNotify('Excel Gerado!');
+    
+    tableData.forEach((table, i) => {
+        const ws = XLSX.utils.json_to_sheet(table.data || []);
+        XLSX.utils.book_append_sheet(wb, ws, table.tableName?.substring(0, 31) || `Tabela ${i + 1}`);
+    });
+    
+    XLSX.writeFile(wb, `${file?.name || 'MUV'}_extração_multi.xlsx`);
+    showNotify('Excel Multi-Planilha Gerado!');
   };
 
   const exportCurrentTableToPDF = () => {
     if (!tableData?.length) return;
     const doc = new jsPDF();
     
-    // Header Neural Pro
-    doc.setFillColor(5, 5, 5);
-    doc.rect(0, 0, 210, 35, 'F');
-    doc.setTextColor(59, 130, 246);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('OCRMUV', 15, 23);
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    doc.text(`EXTRATOR NEURAL • DOCUMENTO: ${file?.name || 'MUV-DOC'}`, 15, 30);
-    
-    // Tabela Grid-Perfect
-    const headers = [Object.keys(tableData[0])];
-    const data = tableData.map(row => Object.values(row));
-    
-    doc.autoTable({
-        head: headers,
-        body: data,
-        startY: 45,
-        theme: 'grid',
-        headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold', fontSize: 9, cellPadding: 4 },
-        bodyStyles: { textColor: 50, fontSize: 8, cellPadding: 3 },
-        alternateRowStyles: { fillColor: [248, 250, 255] },
-        styles: { font: 'helvetica', lineColor: [220, 220, 220], lineWidth: 0.1 }
+    let currentY = 45;
+    tableData.forEach((table, i) => {
+        if (i > 0) { doc.addPage(); currentY = 20; }
+        
+        // Header de Tabela
+        doc.setFillColor(59, 130, 246, 0.1);
+        doc.rect(15, currentY - 10, 180, 8, 'F');
+        doc.setTextColor(59, 130, 246);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(table.tableName?.toUpperCase() || `TABELA ${i + 1}`, 20, currentY - 4);
+        
+        const headers = [Object.keys(table.data?.[0] || {})];
+        const rows = table.data?.map(row => Object.values(row)) || [];
+        
+        doc.autoTable({
+            head: headers,
+            body: rows,
+            startY: currentY,
+            theme: 'grid',
+            headStyles: { fillColor: [59, 130, 246], textColor: 255, fontSize: 8 },
+            bodyStyles: { fontSize: 7 },
+            alternateRowStyles: { fillColor: [248, 250, 255] },
+            margin: { left: 15, right: 15 }
+        });
+        
+        currentY = doc.lastAutoTable.finalY + 20;
     });
     
-    doc.save(`${file?.name || 'MUV'}_extração_pro.pdf`);
-    showNotify('PDF Pro Gerado!');
+    // Header Neural Pro (First page only cover)
+    doc.setPage(1);
+    doc.setFillColor(5, 5, 5);
+    doc.rect(0, 0, 210, 30, 'F');
+    doc.setTextColor(59, 130, 246);
+    doc.setFontSize(20);
+    doc.text('OCRMUV NEURAL REPORT', 15, 20);
+    
+    doc.save(`${file?.name || 'MUV'}_relatório_completo.pdf`);
+    showNotify('PDF Multi-Tabela Gerado!');
   };
 
   const handleTableEdit = (rowIndex, key, value) => {
-    const newData = [...tableData];
+    const newTableData = [...tableData];
+    const targetTable = { ...newTableData[activeTableIndex] };
+    const newData = [...targetTable.data];
     if (newData[rowIndex]) {
-      newData[rowIndex][key] = value;
-      setTableData(newData);
+      newData[rowIndex] = { ...newData[rowIndex], [key]: value };
+      targetTable.data = newData;
+      newTableData[activeTableIndex] = targetTable;
+      setTableData(newTableData);
     }
   };
 
   const handleTableSort = (key) => {
-    if (!key || !Array.isArray(tableData)) return;
+    if (!key || !tableData[activeTableIndex]?.data) return;
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
     }
     setSortConfig({ key, direction });
 
-    const sortedData = [...tableData].sort((a, b) => {
-      const valA = a?.[key] ?? '';
-      const valB = b?.[key] ?? '';
+    const newTableData = [...tableData];
+    const targetTable = { ...newTableData[activeTableIndex] };
+    const sortedData = [...targetTable.data].sort((a, b) => {
+      const valA = String(a?.[key] ?? '').toLowerCase();
+      const valB = String(b?.[key] ?? '').toLowerCase();
+      if (!isNaN(valA) && !isNaN(valB)) {
+        return direction === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      }
       if (valA < valB) return direction === 'asc' ? -1 : 1;
       if (valA > valB) return direction === 'asc' ? 1 : -1;
       return 0;
     });
-    setTableData(sortedData);
+    targetTable.data = sortedData;
+    newTableData[activeTableIndex] = targetTable;
+    setTableData(newTableData);
   };
 
   const copyTableAs = (format) => {
@@ -1209,50 +1260,72 @@ const App = () => {
                     ) : viewMode === 'table' && tableData ? (
                       <div className="overflow-x-auto custom-scrollbar-h p-1">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                          <div className="relative w-full md:w-64 group">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted group-focus-within:text-blue-500 transition-colors" />
-                            <input
-                              type="text"
-                              placeholder="Filtrar dados..."
-                              value={tableSearchTerm}
-                              onChange={(e) => setTableSearchTerm(e.target.value)}
-                              className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500/50 transition-all placeholder:text-muted/30"
-                            />
-                          </div>
-                        <div className="flex gap-2 shrink-0">
-                            {Array.isArray(tableData) && tableData.length > 0 && (
-                              <>
-                                <button onClick={exportCurrentTableToExcel} className="px-3 py-1.5 bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2 transition-all">
-                                  <Grid className="w-3 h-3" /> Exportar Excel
-                                </button>
-                                <button onClick={exportCurrentTableToPDF} className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2 transition-all">
-                                  <FileText className="w-3 h-3" /> Exportar PDF
-                                </button>
-                                <div className="w-[1px] h-6 bg-white/10 mx-1" />
-                                <button onClick={() => copyTableAs('markdown')} className="px-3 py-1.5 glass bg-white/5 border-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2">
-                                  <Copy className="w-3 h-3" /> MD
-                                </button>
-                              </>
-                            )}
-                            <div className="w-[1px] h-6 bg-white/10 mx-2" />
-                            {[
-                              { id: 'neural', label: 'Noir' },
-                              { id: 'minimal', label: 'Minimal' },
-                              { id: 'zebra', label: 'Corporate' },
-                              { id: 'grid', label: 'Classic' }
-                            ].map(s => (
-                              <button
-                                key={s.id}
-                                onClick={() => setTableStyle(s.id)}
-                                className={`px-3 py-1.5 text-[7px] font-bold uppercase tracking-widest rounded-lg border transition-all ${tableStyle === s.id ? 'bg-blue-500 text-white border-blue-400' : 'bg-transparent text-muted border-white/10 hover:border-white/20'}`}
-                              >
-                                {s.label}
-                              </button>
-                            ))}
-                          </div>
+                            <div className="flex flex-col gap-4 w-full md:w-auto">
+                              {tableData.length > 1 && (
+                                <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2 max-w-[400px]">
+                                  {tableData.map((tab, idx) => (
+                                    <button
+                                      key={idx}
+                                      onClick={() => setActiveTableIndex(idx)}
+                                      className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border shrink-0 ${activeTableIndex === idx ? 'bg-blue-500 text-white border-blue-400 shadow-lg shadow-blue-500/20' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'}`}
+                                    >
+                                      {tab.tableName || `Tabela ${idx + 1}`}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="relative w-full md:w-64 group">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted group-focus-within:text-blue-500 transition-colors" />
+                                <input
+                                  type="text"
+                                  placeholder="Filtrar dados..."
+                                  value={tableSearchTerm}
+                                  onChange={(e) => setTableSearchTerm(e.target.value)}
+                                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500/50 transition-all placeholder:text-muted/30"
+                                />
+                                {tableSearchTerm && (
+                                  <button 
+                                    onClick={() => handleSendMessage(`Extrair e analisar dados de: ${tableSearchTerm}`)}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-blue-500 text-white rounded-lg flex items-center gap-2 hover:scale-105 transition-all shadow-lg shadow-blue-500/20"
+                                    title="Consulta Neural"
+                                  >
+                                    <Sparkles className="w-3 h-3" />
+                                    <span className="text-[7px] font-black uppercase">Filtro Neural</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="flex gap-2 shrink-0 self-end">
+                                {Array.isArray(tableData) && tableData.length > 0 && (
+                                  <>
+                                    <button onClick={exportCurrentTableToExcel} className="px-3 py-1.5 bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2 transition-all">
+                                      <Grid className="w-3 h-3" /> Exportar Tudo (Excel)
+                                    </button>
+                                    <button onClick={exportCurrentTableToPDF} className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2 transition-all">
+                                      <FileText className="w-3 h-3" /> Exportar Tudo (PDF)
+                                    </button>
+                                  </>
+                                )}
+                                <div className="w-[1px] h-6 bg-white/10 mx-2" />
+                                {[
+                                  { id: 'neural', label: 'Noir' },
+                                  { id: 'minimal', label: 'Minimal' },
+                                  { id: 'zebra', label: 'Corporate' },
+                                  { id: 'grid', label: 'Classic' }
+                                ].map(s => (
+                                  <button
+                                    key={s.id}
+                                    onClick={() => setTableStyle(s.id)}
+                                    className={`px-3 py-1.5 text-[7px] font-bold uppercase tracking-widest rounded-lg border transition-all ${tableStyle === s.id ? 'bg-blue-500 text-white border-blue-400' : 'bg-transparent text-muted border-white/10 hover:border-white/20'}`}
+                                  >
+                                    {s.label}
+                                  </button>
+                                ))}
+                            </div>
                         </div>
 
-                        {Array.isArray(tableData) && tableData.length > 0 ? (
+                        {tableData[activeTableIndex]?.data?.length > 0 ? (
                           <table className={`w-full border-collapse text-[11px] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 ${tableStyle === 'neural' ? 'bg-white/[0.02] backdrop-blur-xl' :
                               tableStyle === 'minimal' ? 'bg-white/[0.05]' :
                                 tableStyle === 'zebra' ? 'bg-black/20' : 'bg-transparent border-gray-400/20'
@@ -1261,7 +1334,7 @@ const App = () => {
                             <tr className={`border-b border-white/10 ${tableStyle === 'neural' ? 'bg-gradient-to-r from-blue-600/20 via-blue-900/10 to-transparent' :
                                 tableStyle === 'grid' ? 'bg-gray-500/10 border-gray-400' : 'bg-white/5'
                               }`}>
-                              {Object.keys(tableData[0] || {}).map(key => (
+                              {Object.keys(tableData[activeTableIndex].data[0] || {}).map(key => (
                                 <th
                                   key={key}
                                   onClick={() => handleTableSort(key)}
@@ -1280,7 +1353,7 @@ const App = () => {
                             </tr>
                           </thead>
                           <tbody className={`${tableStyle === 'zebra' ? 'divide-y divide-white/5' : ''}`}>
-                            {tableData.filter(row => row && typeof row === 'object' && !Array.isArray(row))
+                            {tableData[activeTableIndex].data.filter(row => row && typeof row === 'object' && !Array.isArray(row))
                             .filter(row =>
                               Object.values(row).some(v => String(v || '').toLowerCase().includes(tableSearchTerm.toLowerCase()))
                             ).map((row, i) => (
@@ -1305,7 +1378,7 @@ const App = () => {
                             ))}
                           </tbody>
                         </table>
-                        ) : tableLoading ? (
+                     ) : tableLoading ? (
                            <div className="py-20 flex flex-col items-center justify-center gap-4 opacity-50">
                               <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                               <span className="text-[10px] font-black uppercase tracking-[0.4em]">Sincronizando Matriz Neural...</span>

@@ -400,7 +400,18 @@ app.post('/api/ai/chat', authenticate, async (req, res) => {
 
     try {
         const messages = [
-            { role: 'system', content: 'You are MUV Neural Guide, an AI assistant analyzing a document. Answer concisely based on the document provided and the current conversation.' }
+            { 
+                role: 'system', 
+                content: `You are MUV Neural Guide. analyze the document and answer the user. 
+                If the user asks to filter, list, extract or visualize specific data (e.g., "show expenses > 100", "list items from Dec"), you MUST provide the data in a structured way.
+                Response format:
+                {
+                  "answer": "Your text explanation here",
+                  "extractedTable": [{"Col1": "Val", "Col2": 123}], // Only if data was requested/filtered
+                  "extractedChart": {"title": "Title", "type": "bar|line|pie|area", "data": [{"name": "Label", "value": 100}]} // Only if analysis/chart requested
+                }
+                Return ONLY the JSON. No conversational preamble outside the JSON.` 
+            }
         ];
 
         if (chatHistory && chatHistory.length > 0) {
@@ -409,22 +420,40 @@ app.post('/api/ai/chat', authenticate, async (req, res) => {
             });
         }
 
-        messages.push({ role: 'user', content: `Document Context: ${documentText?.substring(0, 1500) || ''}\n\nQuestion: ${query}` });
+        messages.push({ role: 'user', content: `Document Context: ${documentText?.substring(0, 4000) || ''}\n\nQuestion: ${query}` });
 
         console.log('[AI/CHAT] A chamar model Llama 3.1 com histórico...');
         const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
             messages,
-            max_tokens: 250,
-            temperature: 0.5,
+            max_tokens: 1000,
+            temperature: 0.2,
         });
 
-        const answer = response.choices[0].message.content.trim();
-        console.log('[AI/CHAT] Resposta recebida (primeiros 100 chars):', answer?.substring(0, 100));
-        res.json({ answer });
+        const textRes = response.choices[0].message.content.trim();
+        console.log('[AI/CHAT] Resposta bruta recebida:', textRes.substring(0, 100));
+
+        let finalResponse = { answer: textRes };
+        const jsonStart = textRes.indexOf('{');
+        const jsonEnd = textRes.lastIndexOf('}');
+
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+            try {
+                const parsed = JSON.parse(textRes.substring(jsonStart, jsonEnd + 1));
+                finalResponse = {
+                    answer: parsed.answer || textRes,
+                    tableData: parsed.extractedTable || null,
+                    chartData: parsed.extractedChart || null
+                };
+            } catch (e) {
+                console.error("[AI/CHAT] Erro ao parsear JSON da resposta:", e);
+            }
+        }
+
+        res.json(finalResponse);
     } catch (error) {
         console.error('[AI/CHAT] ERRO:', error?.message || error);
-        res.json({ answer: `Erro ao interagir com a IA: ${error?.message || 'Erro desconhecido'}. Verifique as variáveis de ambiente (HF_TOKEN) no Vercel.` });
+        res.json({ answer: `Erro ao interagir com a IA: ${error?.message || 'Erro desconhecido'}.` });
     }
 });
 
