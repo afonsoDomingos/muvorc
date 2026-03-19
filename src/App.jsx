@@ -14,6 +14,7 @@ import { useDropzone } from 'react-dropzone';
 import { processImage, processPdf, warmUp } from './services/OCRService';
 import axios from 'axios';
 import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import { pack, Document, Packer, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
@@ -29,6 +30,12 @@ const App = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState(null);
   const [activeTab, setActiveTab] = useState('home');
+  const [history, setHistory] = useState(() => {
+    const saved = localStorage.getItem('muv_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [docClassification, setDocClassification] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
   const [isMainSidebarOpen, setIsMainSidebarOpen] = useState(true);
   const [activeMainTab, setActiveMainTab] = useState('ocr');
   const [isEditing, setIsEditing] = useState(false);
@@ -185,6 +192,30 @@ const App = () => {
     multiple: false
   });
 
+  const saveToHistory = (item) => {
+    const newHistory = [{
+      id: Date.now(),
+      name: file?.name || 'Sem Nome',
+      timestamp: new Date().toLocaleString(),
+      result: item.result,
+      tableData: item.tableData,
+      chartData: item.chartData,
+      classification: docClassification
+    }, ...history].slice(0, 10);
+    setHistory(newHistory);
+    localStorage.setItem('muv_history', JSON.stringify(newHistory));
+  };
+
+  const loadFromHistory = (item) => {
+    setResult(item.result);
+    setTableData(item.tableData);
+    setChartData(item.chartData);
+    setDocClassification(item.classification);
+    setViewMode('text');
+    setShowHistory(false);
+    showNotify('Sessão Neural Restaurada!');
+  };
+
   const handleProcess = async () => {
     if (!token) {
       showNotify('⚠️ Acesso restrito. Inicia sessão para utilizar o poder neural do OCRMUV.', 'error');
@@ -196,7 +227,10 @@ const App = () => {
     setProgress(0);
     setError(null);
     setCurrentRecordId(null); // Reset when starting new process
+    setDocClassification('Analisando...');
+
     try {
+      showNotify('Iniciando Percepção Neural...', 'info');
       let text = '';
       if (file.type === 'application/pdf') {
         text = await processPdf(file, setProgress);
@@ -204,6 +238,20 @@ const App = () => {
         text = await processImage(file, setProgress);
       }
       setResult(text);
+      
+      // Auto-Classificação Neural
+      try {
+        const classRes = await axios.post('/api/ai/extract-table', { 
+            documentText: text.substring(0, 2000), 
+            mode: 'STANDARD', 
+            customPrompt: 'Classifique este documento em UMA PALAVRA (ex: FATURA, RECIBO, CONTRATO, RH). Responda APENAS a palavra.' 
+        }, { headers: { Authorization: `Bearer ${token}` } });
+        setDocClassification(String(classRes.data?.[0]?.Campo || classRes.data || 'Geral').replace(/[^a-zA-Z]/g, ''));
+      } catch (e) {
+        setDocClassification('Geral');
+      }
+
+      saveToHistory({ result: text, tableData: [], chartData: [] });
       confetti({
         particleCount: 150,
         spread: 70,
@@ -418,18 +466,35 @@ const App = () => {
   const exportCurrentTableToPDF = () => {
     if (!tableData?.length) return;
     const doc = new jsPDF();
-    doc.setFontSize(14);
-    doc.text(`OCRMUV - Extração de Dados: ${file?.name || ''}`, 10, 10);
+    
+    // Header Neural Pro
+    doc.setFillColor(5, 5, 5);
+    doc.rect(0, 0, 210, 35, 'F');
+    doc.setTextColor(59, 130, 246);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OCRMUV', 15, 23);
+    doc.setTextColor(255, 255, 255);
     doc.setFontSize(8);
-    let y = 30;
-    tableData.forEach((row, i) => {
-      const line = Object.values(row).join(' | ');
-      doc.text(line, 10, y);
-      y += 8;
-      if (y > 280) { doc.addPage(); y = 20; }
+    doc.text(`EXTRATOR NEURAL • DOCUMENTO: ${file?.name || 'MUV-DOC'}`, 15, 30);
+    
+    // Tabela Grid-Perfect
+    const headers = [Object.keys(tableData[0])];
+    const data = tableData.map(row => Object.values(row));
+    
+    doc.autoTable({
+        head: headers,
+        body: data,
+        startY: 45,
+        theme: 'grid',
+        headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold', fontSize: 9, cellPadding: 4 },
+        bodyStyles: { textColor: 50, fontSize: 8, cellPadding: 3 },
+        alternateRowStyles: { fillColor: [248, 250, 255] },
+        styles: { font: 'helvetica', lineColor: [220, 220, 220], lineWidth: 0.1 }
     });
-    doc.save(`${file?.name || 'MUV'}_table.pdf`);
-    showNotify('PDF Gerado!');
+    
+    doc.save(`${file?.name || 'MUV'}_extração_pro.pdf`);
+    showNotify('PDF Pro Gerado!');
   };
 
   const handleTableEdit = (rowIndex, key, value) => {
@@ -982,9 +1047,16 @@ const App = () => {
                       )}
                     </motion.div>
 
-                    <h2 className="text-2xl font-black text-white mb-2 tracking-tight uppercase relative z-20">
+                    <h2 className="text-2xl font-black text-white mb-2 tracking-tight uppercase relative z-20 flex items-center gap-3">
                       {file ? (
-                        <Typewriter text={file.name} speed={30} />
+                        <>
+                          <Typewriter text={file.name} speed={30} />
+                          {docClassification && (
+                            <span className="px-2 py-0.5 bg-blue-500 text-[8px] font-black rounded-full animate-pulse">
+                              {docClassification}
+                            </span>
+                          )}
+                        </>
                       ) : (
                         'ENVIAR FICHEIRO'
                       )}
@@ -1010,6 +1082,10 @@ const App = () => {
                     <button onClick={startCamera} className="glass py-4 flex items-center justify-center gap-3 hover:bg-blue-500/5 transition-all border border-white/5">
                       <Camera className="w-5 h-5 text-blue-500" />
                       <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Abrir Câmara</span>
+                    </button>
+                    <button onClick={() => setShowHistory(true)} className="glass py-4 flex items-center justify-center gap-3 hover:bg-blue-500/5 transition-all border border-white/5 bg-white/[0.02]">
+                      <History className="w-5 h-5 text-blue-400" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Histórico de Scans</span>
                     </button>
                   </div>
                 </div>
