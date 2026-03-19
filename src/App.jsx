@@ -359,7 +359,10 @@ const App = () => {
     try {
       showNotify(`Motor Neural: Extraindo em modo ${tableMode}...`, 'info');
       const res = await axios.post('/api/ai/extract-table', { documentText: result, mode: tableMode }, { headers: { Authorization: `Bearer ${token}` } });
-      setTableData(res.data);
+      const cleanData = Array.isArray(res.data) 
+        ? res.data.filter(r => r && typeof r === 'object' && !Array.isArray(r))
+        : [];
+      setTableData(cleanData);
       setViewMode('table');
       showNotify('Tabela Neural Identificada!');
     } catch (err) {
@@ -371,11 +374,14 @@ const App = () => {
 
   const handleTableEdit = (rowIndex, key, value) => {
     const newData = [...tableData];
-    newData[rowIndex][key] = value;
-    setTableData(newData);
+    if (newData[rowIndex]) {
+      newData[rowIndex][key] = value;
+      setTableData(newData);
+    }
   };
 
   const handleTableSort = (key) => {
+    if (!key || !Array.isArray(tableData)) return;
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
@@ -383,8 +389,10 @@ const App = () => {
     setSortConfig({ key, direction });
 
     const sortedData = [...tableData].sort((a, b) => {
-      if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
-      if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
+      const valA = a?.[key] ?? '';
+      const valB = b?.[key] ?? '';
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
       return 0;
     });
     setTableData(sortedData);
@@ -1112,7 +1120,7 @@ const App = () => {
                                   <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                   <span className="relative z-10 flex items-center gap-2">
                                     <div className={`w-1 h-1 rounded-full ${tableStyle === 'neural' ? 'bg-blue-500/40' : 'bg-white/20'}`} />
-                                    {key}
+                                    {key || 'Campo'}
                                     {sortConfig.key === key && (
                                       <span className="text-[8px] text-blue-500">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
                                     )}
@@ -1122,17 +1130,18 @@ const App = () => {
                             </tr>
                           </thead>
                           <tbody className={`${tableStyle === 'zebra' ? 'divide-y divide-white/5' : ''}`}>
-                            {tableData.filter(row =>
-                              Object.values(row).some(v => String(v).toLowerCase().includes(tableSearchTerm.toLowerCase()))
+                            {tableData.filter(row => row && typeof row === 'object' && !Array.isArray(row))
+                            .filter(row =>
+                              Object.values(row).some(v => String(v || '').toLowerCase().includes(tableSearchTerm.toLowerCase()))
                             ).map((row, i) => (
                               <tr key={i} className={`transition-all group/row ${tableStyle === 'neural' ? 'hover:bg-blue-500/10 even:bg-white/[0.03]' :
                                   tableStyle === 'zebra' ? 'even:bg-white/[0.05] hover:bg-blue-500/5' :
                                     tableStyle === 'minimal' ? 'hover:bg-white/10' : 'border border-white/10 hover:bg-white/5'
                                 }`}>
-                                {Object.keys(row).map((key, j) => (
+                                {Object.keys(row || {}).map((key, j) => (
                                   <td key={j} className={`p-0 relative group/cell ${tableStyle === 'grid' ? 'border border-white/10' : ''}`}>
                                     <input
-                                      value={row[key]}
+                                      value={row[key] || ''}
                                       onChange={(e) => handleTableEdit(i, key, e.target.value)}
                                       className={`w-full h-full p-4 bg-transparent outline-none border-none text-[11px] font-medium tracking-tight transition-all focus:bg-blue-500/10 focus:text-white ${tableStyle === 'neural' ? 'text-white/60' : 'text-white/80'}`}
                                       spellCheck="false"
