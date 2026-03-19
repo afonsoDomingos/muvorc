@@ -7,7 +7,7 @@ import {
   Cpu, Lock, Database, Headphones, Mail, Key, LogOut, Trash2,
   BarChart3, Users, Settings, Activity, Camera, Building2,
   Edit3, Save, ChevronDown, Home, MessageSquare, PieChart, Send,
-  FileCode, History, File
+  FileCode, History, File, Grid, Layout
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useDropzone } from 'react-dropzone';
@@ -67,7 +67,7 @@ const App = () => {
   const [tableLoading, setTableLoading] = useState(false);
   const [viewMode, setViewMode] = useState('text'); // 'text' or 'table'
   const [tableStyle, setTableStyle] = useState('neural'); // neural, minimal, zebra, grid
-  const [tableMode, setTableMode] = useState('STANDARD'); // STANDARD, INVOICE, LOGISTICS, TIMELINE
+  const [scannerMode, setScannerMode] = useState('PADRÃO'); // PADRÃO, TABELA, GRÁFICO
   const [tableSearchTerm, setTableSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const chatEndRef = useRef(null);
@@ -354,23 +354,60 @@ const App = () => {
     }
   };
 
+  const runScanner = async () => {
+    if (!result) return;
+    if (scannerMode === 'TABELA') {
+      await detectTable();
+    } else if (scannerMode === 'GRÁFICO') {
+      await extractChartData();
+    } else {
+      showNotify('Modo Padrão: Texto já processado.', 'info');
+    }
+  };
+
   const detectTable = async () => {
     if (!result) return;
     setTableLoading(true);
     try {
-      showNotify(`Motor Neural: Extraindo em modo ${tableMode}...`, 'info');
-      const res = await axios.post('/api/ai/extract-table', { documentText: result, mode: tableMode }, { headers: { Authorization: `Bearer ${token}` } });
+      showNotify(`Motor Neural: Reconstruindo Tabela...`, 'info');
+      const res = await axios.post('/api/ai/extract-table', { documentText: result, mode: 'STANDARD' }, { headers: { Authorization: `Bearer ${token}` } });
       const cleanData = Array.isArray(res.data) 
         ? res.data.filter(r => r && typeof r === 'object' && !Array.isArray(r))
         : [];
       setTableData(cleanData);
       setViewMode('table');
-      showNotify('Tabela Neural Identificada!');
+      showNotify('Tabela Gerada!');
     } catch (err) {
-      showNotify('Não foi possível identificar uma estrutura clara', 'error');
+      showNotify('Falha na extração de tabela.', 'error');
     } finally {
       setTableLoading(false);
     }
+  };
+
+  const exportCurrentTableToExcel = () => {
+    if (!tableData?.length) return;
+    const ws = XLSX.utils.json_to_sheet(tableData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "MUV_DATA");
+    XLSX.writeFile(wb, `${file?.name || 'MUV'}_table.xlsx`);
+    showNotify('Excel Gerado!');
+  };
+
+  const exportCurrentTableToPDF = () => {
+    if (!tableData?.length) return;
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text(`OCRMUV - Extração de Dados: ${file?.name || ''}`, 10, 10);
+    doc.setFontSize(8);
+    let y = 30;
+    tableData.forEach((row, i) => {
+      const line = Object.values(row).join(' | ');
+      doc.text(line, 10, y);
+      y += 8;
+      if (y > 280) { doc.addPage(); y = 20; }
+    });
+    doc.save(`${file?.name || 'MUV'}_table.pdf`);
+    showNotify('PDF Gerado!');
   };
 
   const handleTableEdit = (rowIndex, key, value) => {
@@ -985,20 +1022,19 @@ const App = () => {
                           </button>
                           <div className="flex items-center gap-1 ml-1 bg-black/20 rounded-lg pr-2 group/modes">
                             <select
-                              value={tableMode}
-                              onChange={(e) => setTableMode(e.target.value)}
+                              value={scannerMode}
+                              onChange={(e) => setScannerMode(e.target.value)}
                               className="bg-transparent text-[8px] font-black uppercase tracking-tighter text-blue-400 px-3 py-1 cursor-pointer outline-none border-none"
                             >
-                              <option value="STANDARD">Padrão</option>
-                              <option value="INVOICE">Finanças</option>
-                              <option value="LOGISTICS">Logística</option>
-                              <option value="TIMELINE">Histórico</option>
+                              <option value="PADRÃO">Padrão</option>
+                              <option value="TABELA">Tabela</option>
+                              <option value="GRÁFICO">Gráfico</option>
                             </select>
                             <button
-                              onClick={tableData && !tableLoading ? () => setViewMode('table') : detectTable}
-                              className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === 'table' ? 'bg-blue-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                              onClick={runScanner}
+                              className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === 'table' || viewMode === 'chart' ? 'bg-blue-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
                             >
-                              {tableLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <PieChart className="w-3 h-3" />}
+                              {tableLoading || chartLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
                               Scanner
                             </button>
                           </div>
@@ -1077,11 +1113,15 @@ const App = () => {
                         <div className="flex gap-2 shrink-0">
                             {Array.isArray(tableData) && tableData.length > 0 && (
                               <>
+                                <button onClick={exportCurrentTableToExcel} className="px-3 py-1.5 bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2 transition-all">
+                                  <Grid className="w-3 h-3" /> Exportar Excel
+                                </button>
+                                <button onClick={exportCurrentTableToPDF} className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2 transition-all">
+                                  <FileText className="w-3 h-3" /> Exportar PDF
+                                </button>
+                                <div className="w-[1px] h-6 bg-white/10 mx-1" />
                                 <button onClick={() => copyTableAs('markdown')} className="px-3 py-1.5 glass bg-white/5 border-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2">
                                   <Copy className="w-3 h-3" /> MD
-                                </button>
-                                <button onClick={() => copyTableAs('csv')} className="px-3 py-1.5 glass bg-white/5 border-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2">
-                                  <Database className="w-3 h-3" /> CSV
                                 </button>
                               </>
                             )}
