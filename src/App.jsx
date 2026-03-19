@@ -384,6 +384,22 @@ const App = () => {
     }
   };
 
+  const extractChartData = async () => {
+    if (!result) return;
+    setChartLoading(true);
+    try {
+      showNotify(`Motor Neural: Gerando Visão de Gráfico...`, 'info');
+      const res = await axios.post('/api/ai/extract-table', { documentText: result, mode: 'GRÁFICO' }, { headers: { Authorization: `Bearer ${token}` } });
+      setChartData(res.data);
+      setViewMode('chart');
+      showNotify('Gráfico Gerado com Sucesso!');
+    } catch (err) {
+      showNotify('Erro ao processar dados visuais.', 'error');
+    } finally {
+      setChartLoading(false);
+    }
+  };
+
   const exportCurrentTableToExcel = () => {
     if (!tableData?.length) return;
     const ws = XLSX.utils.json_to_sheet(tableData);
