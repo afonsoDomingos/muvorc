@@ -1030,13 +1030,21 @@ const App = () => {
                         <div className="h-10 w-[1px] bg-white/10 hidden md:block" />
 
                         <div className="flex bg-white/5 rounded-xl p-1">
-                          <button
-                            onClick={() => setViewMode('text')}
-                            className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'text' ? 'bg-blue-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
-                          >
-                            Texto
-                          </button>
-                          <div className="flex items-center gap-1 ml-1 bg-black/20 rounded-lg pr-2 group/modes">
+                           <button
+                             onClick={() => setViewMode('text')}
+                             className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'text' ? 'bg-blue-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                           >
+                             Texto
+                           </button>
+                           {chartData && (
+                             <button
+                               onClick={() => setViewMode('chart')}
+                               className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'chart' ? 'bg-blue-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                             >
+                               Gráfico
+                             </button>
+                           )}
+                           <div className="flex items-center gap-1 ml-1 bg-black/20 rounded-lg pr-2 group/modes">
                             <select
                               value={scannerMode}
                               onChange={(e) => setScannerMode(e.target.value)}
@@ -1242,9 +1250,92 @@ const App = () => {
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      <Typewriter text={result} speed={2} />
-                    )
+                     ) : viewMode === 'chart' && chartData ? (
+                        <div className="h-[450px] w-full p-4 flex flex-col gap-6">
+                            <div className="flex justify-between items-center mb-2">
+                                <div className="flex items-center gap-4">
+                                    <BarChart3 className="w-5 h-5 text-blue-500" />
+                                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Projeção Neural de Dados</h4>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={extractChartData} className="p-2 glass flex items-center gap-2 text-[8px] font-black uppercase text-blue-400 hover:text-white"><RefreshCcw className="w-3 h-3" /> Recalcular</button>
+                                </div>
+                            </div>
+                            
+                            <div className="flex-1 min-h-0 bg-white/[0.02] border border-white/5 rounded-3xl p-8 relative overflow-hidden group">
+                                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={Array.isArray(chartData) ? chartData : []}>
+                                        <defs>
+                                            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                        <XAxis 
+                                            dataKey="name" 
+                                            stroke="rgba(255,255,255,0.3)" 
+                                            fontSize={8} 
+                                            fontWeight={900}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            dy={10}
+                                        />
+                                        <YAxis 
+                                            stroke="rgba(255,255,255,0.3)" 
+                                            fontSize={8} 
+                                            fontWeight={900}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            dx={-10}
+                                        />
+                                        <Tooltip 
+                                            contentStyle={{ 
+                                                backgroundColor: 'rgba(5, 5, 5, 0.9)', 
+                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                borderRadius: '12px',
+                                                fontSize: '10px'
+                                            }}
+                                            itemStyle={{ color: '#3b82f6', fontWeight: 800 }}
+                                        />
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="valor" 
+                                            stroke="#3b82f6" 
+                                            strokeWidth={3}
+                                            fillOpacity={1} 
+                                            fill="url(#colorValue)" 
+                                            animationDuration={2000}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                            
+                            <div className="p-4 glass bg-blue-500/5 rounded-2xl flex items-center gap-4 border border-blue-500/20">
+                                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                                    <Activity className="w-4 h-4 text-blue-500" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black uppercase text-white/80">Tendência Identificada</span>
+                                    <span className="text-[8px] font-bold uppercase text-muted tracking-widest opacity-60 italic">A IA identificou correlações métricas no texto analisado.</span>
+                                </div>
+                            </div>
+                        </div>
+                     ) : chartLoading ? (
+                        <div className="py-20 flex flex-col items-center justify-center gap-4 opacity-50">
+                            <div className="relative w-16 h-16 mb-4">
+                                <Loader2 className="w-full h-full animate-spin text-blue-500" />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <PieChart className="w-6 h-6 text-blue-500/50" />
+                                </div>
+                            </div>
+                           <span className="text-[10px] font-black uppercase tracking-[0.4em]">Gerando Gráfico Neural...</span>
+                        </div>
+                     ) : (
+                       <Typewriter text={result} speed={2} />
+                     )
                   ) : loading ? (
                     <div className="h-full flex flex-col items-center justify-center gap-8 py-12">
                       <NeuralProcessor progress={progress} />
