@@ -390,9 +390,15 @@ const App = () => {
     try {
       showNotify(`Motor Neural: Gerando Visão de Gráfico...`, 'info');
       const res = await axios.post('/api/ai/extract-table', { documentText: result, mode: 'GRÁFICO' }, { headers: { Authorization: `Bearer ${token}` } });
-      setChartData(res.data);
+      
+      // Validação Deep-Shield: Garante que apenas dados válidos chegam ao motor de gráficos
+      const cleanChartData = Array.isArray(res.data) 
+        ? res.data.filter(r => r && typeof r === 'object' && !Array.isArray(r) && (r.name || r.item))
+        : [];
+        
+      setChartData(cleanChartData);
       setViewMode('chart');
-      showNotify('Gráfico Gerado com Sucesso!');
+      showNotify('Análise Visual Concluída!');
     } catch (err) {
       showNotify('Erro ao processar dados visuais.', 'error');
     } finally {

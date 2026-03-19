@@ -67,21 +67,21 @@ export const processPdf = async (pdfFile, onProgress) => {
             console.log(`[NEURAL] Processando página ${i}/${numPages}`);
             const page = await pdf.getPage(i);
 
-            // Reduzir um pouco o scale para 1.5 para maior velocidade sem perda crítica de precisão
-            const viewport = page.getViewport({ scale: 1.5 });
+            // Resolução Pro Elite: Scale 2.5 para capturar detalhes minuciosos e fontes pequenas
+            const viewport = page.getViewport({ scale: 2.5 });
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
             canvas.height = viewport.height;
             canvas.width = viewport.width;
 
             await page.render({ canvasContext: context, viewport }).promise;
-            const imageData = canvas.toDataURL('image/jpeg', 0.85); // JPEG é mais leve que PNG
+            const imageData = canvas.toDataURL('image/jpeg', 0.95); // Alta fidelidade JPEG
 
             const { data: { text } } = await worker.recognize(imageData);
 
-            // Atualizar progresso global
+            // Segmentação de Página Padronizada para I.A.
             onProgress(Math.floor((i / numPages) * 100));
-            fullText += `--- Página ${i} ---\n${text}\n\n`;
+            fullText += `\n### CAMADA NEURAL: PÁGINA ${i} / ${numPages} ###\n${text}\n\n`;
 
             // Limpeza de canvas para libertar memória
             canvas.width = 0;
