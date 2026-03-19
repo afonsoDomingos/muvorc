@@ -273,12 +273,29 @@ const App = () => {
     showNotify('Word DOCX Gerado');
   };
 
-  const exportToExcel = () => {
-    const ws = XLSX.utils.aoa_to_sheet([[result]]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "MUV_OCR_DATA");
-    XLSX.writeFile(wb, `${file?.name || 'DOC'}_muv_export.xlsx`);
-    showNotify('Excel XLSX Gerado');
+  const exportToExcel = async () => {
+    if (!result) return;
+    showNotify('Motor Neural: Identificando estrutura de tabela...', 'info');
+    try {
+      setLoading(true);
+      const res = await axios.post('/api/ai/extract-table', { documentText: result }, { headers: { Authorization: `Bearer ${token}` } });
+      const tableData = res.data;
+
+      const ws = XLSX.utils.json_to_sheet(tableData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "MUV_SMART_EXTRACT");
+      XLSX.writeFile(wb, `${file?.name || 'DOC'}_muv_smart_table.xlsx`);
+      showNotify('Excel Estruturado Gerado com Sucesso!');
+    } catch (err) {
+      console.warn('Fallback to basic excel export');
+      const ws = XLSX.utils.aoa_to_sheet([[result]]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "MUV_OCR_DATA");
+      XLSX.writeFile(wb, `${file?.name || 'DOC'}_muv_export.xlsx`);
+      showNotify('Exportação básica concluída (IA offline)');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -905,7 +922,10 @@ const App = () => {
                           <div className="absolute right-0 top-full mt-2 w-48 glass border-white/5 opacity-0 group-hover/download:opacity-100 scale-95 group-hover/download:scale-100 pointer-events-none group-hover/download:pointer-events-auto transition-all z-[100] shadow-2xl bg-[#0a0a0a]">
                             <div onClick={exportToPDF} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer border-b border-white/5 transition-all text-white/70 hover:text-white">Download PDF</div>
                             <div onClick={exportToWord} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer border-b border-white/5 transition-all text-white/70 hover:text-white">Download Word</div>
-                            <div onClick={exportToExcel} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer transition-all text-white/70 hover:text-white">Download Excel</div>
+                            <div onClick={exportToExcel} className="p-4 text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/10 cursor-pointer transition-all text-white/70 hover:text-white flex items-center gap-2 group/smart">
+                              Excel (Smart Extract)
+                              <Sparkles className="w-3 h-3 text-blue-500 opacity-0 group-hover/smart:opacity-100 transition-opacity" />
+                            </div>
                           </div>
                         </div>
 

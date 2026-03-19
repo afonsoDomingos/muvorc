@@ -452,6 +452,35 @@ app.post('/api/ai/analyze-chart', authenticate, async (req, res) => {
     }
 });
 
+app.post('/api/ai/extract-table', authenticate, async (req, res) => {
+    try {
+        const { documentText } = req.body;
+
+        const response = await hf.chatCompletion({
+            model: 'meta-llama/Llama-3.1-8B-Instruct',
+            messages: [
+                { role: 'system', content: 'You are a data structures expert. Extract all tabular data from the text. Format it as a JSON ARRAY of OBJECTS where each object is a row. Use consistent keys based on table headers. If no table exists, extract main entities as a list. Return ONLY the JSON array, no preamble.' },
+                { role: 'user', content: `Extract table from this text: ${documentText?.substring(0, 1500) || ''}` }
+            ],
+            max_tokens: 800,
+            temperature: 0.1,
+        });
+
+        const textRes = response.choices[0].message.content.trim();
+        const jsonStart = textRes.indexOf('[');
+        const jsonEnd = textRes.lastIndexOf(']');
+
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+            const tableData = JSON.parse(textRes.substring(jsonStart, jsonEnd + 1));
+            return res.json(tableData);
+        }
+        res.status(400).json({ error: 'Falha ao detetar estrutura de tabela' });
+    } catch (error) {
+        console.error('AI Table Error:', error);
+        res.status(500).json({ error: 'Erro no motor neural de extração' });
+    }
+});
+
 const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => {

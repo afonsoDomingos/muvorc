@@ -430,12 +430,10 @@ app.post('/api/ai/chat', authenticate, async (req, res) => {
 
 app.post('/api/ai/analyze-chart', authenticate, async (req, res) => {
     const { documentText, chatHistory } = req.body;
-    console.log('[AI/CHART] Pedido recebido com contexto de chat.');
 
     try {
         const historyContext = chatHistory?.map(m => `${m.sender}: ${m.text}`).join('\n') || 'None';
 
-        console.log('[AI/CHART] A chamar model Llama 3.1 para análise contextual...');
         const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.1-8B-Instruct',
             messages: [
@@ -447,19 +445,16 @@ app.post('/api/ai/analyze-chart', authenticate, async (req, res) => {
         });
 
         const textRes = response.choices[0].message.content.trim();
-        console.log('[AI/CHART] Resposta bruta:', textRes?.substring(0, 200));
         const jsonStart = textRes.indexOf('{');
         const jsonEnd = textRes.lastIndexOf('}');
 
         if (jsonStart !== -1 && jsonEnd !== -1) {
             const chartData = JSON.parse(textRes.substring(jsonStart, jsonEnd + 1));
-            console.log('[AI/CHART] Dados de gráfico extraídos com sucesso:', chartData.title);
             return res.json(chartData);
         }
-        throw new Error('A IA não devolveu JSON válido: ' + textRes?.substring(0, 100));
+        throw new Error('A IA não devolveu JSON válido');
     } catch (error) {
-        console.error('[AI/CHART] ERRO:', error?.message || error);
-        // Fallback chart
+        console.error('AI Chart Error:', error);
         res.json({
             title: "Resultados Automáticos (Fallback)",
             type: "bar",
@@ -470,6 +465,35 @@ app.post('/api/ai/analyze-chart', authenticate, async (req, res) => {
                 { name: "Lucro", value: 5100 }
             ]
         });
+    }
+});
+
+app.post('/api/ai/extract-table', authenticate, async (req, res) => {
+    try {
+        const { documentText } = req.body;
+
+        const response = await hf.chatCompletion({
+            model: 'meta-llama/Llama-3.1-8B-Instruct',
+            messages: [
+                { role: 'system', content: 'You are a data structures expert. Extract all tabular data from the text. Format it as a JSON ARRAY of OBJECTS where each row is an object. Use consistent keys based on table headers. Return ONLY the JSON array, no preamble.' },
+                { role: 'user', content: `Extract table from this text: ${documentText?.substring(0, 1500) || ''}` }
+            ],
+            max_tokens: 800,
+            temperature: 0.1,
+        });
+
+        const textRes = response.choices[0].message.content.trim();
+        const jsonStart = textRes.indexOf('[');
+        const jsonEnd = textRes.lastIndexOf(']');
+
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+            const tableData = JSON.parse(textRes.substring(jsonStart, jsonEnd + 1));
+            return res.json(tableData);
+        }
+        res.status(400).json({ error: 'Falha ao detetar estrutura de tabela' });
+    } catch (error) {
+        console.error('AI Table Error:', error);
+        res.status(500).json({ error: 'Erro no motor neural de extração' });
     }
 });
 
