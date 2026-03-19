@@ -436,19 +436,22 @@ const App = () => {
     if (!result) return;
     setChartLoading(true);
     try {
-      showNotify(`Motor Neural: Gerando Visão de Gráfico...`, 'info');
-      const res = await axios.post('/api/ai/extract-table', { documentText: result, mode: 'GRÁFICO' }, { headers: { Authorization: `Bearer ${token}` } });
+      showNotify(`Motor Neural: Gerando Dashboard Visual...`, 'info');
+      const res = await axios.post('/api/ai/extract-table', { 
+        documentText: result, 
+        mode: 'GRÁFICO',
+        customPrompt: 'Extraia tendências e métricas numéricas como um JSON ARRAY de pelo menos 5 objetos com as propriedades "name" (string curta) e "valor" (número). Tente identificar a métrica mais relevante do documento.' 
+      }, { headers: { Authorization: `Bearer ${token}` } });
       
-      // Validação Deep-Shield: Garante que apenas dados válidos chegam ao motor de gráficos
       const cleanChartData = Array.isArray(res.data) 
         ? res.data.filter(r => r && typeof r === 'object' && !Array.isArray(r) && (r.name || r.item))
         : [];
         
       setChartData(cleanChartData);
       setViewMode('chart');
-      showNotify('Análise Visual Concluída!');
+      showNotify('Dashboard de Dados Gerado!');
     } catch (err) {
-      showNotify('Erro ao processar dados visuais.', 'error');
+      showNotify('Erro ao processar análise visual.', 'error');
     } finally {
       setChartLoading(false);
     }
@@ -1333,75 +1336,81 @@ const App = () => {
                         </div>
                       </div>
                      ) : viewMode === 'chart' && chartData ? (
-                        <div className="h-[450px] w-full p-4 flex flex-col gap-6">
-                            <div className="flex justify-between items-center mb-2">
-                                <div className="flex items-center gap-4">
-                                    <BarChart3 className="w-5 h-5 text-blue-500" />
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Projeção Neural de Dados</h4>
+                        <div className="h-full w-full p-4 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
+                            <div className="flex justify-between items-center shrink-0">
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                                            <PieChart className="w-4 h-4 text-blue-500" />
+                                        </div>
+                                        <h4 className="text-[12px] font-black uppercase tracking-[0.4em] text-white">Neural Insights Dashboard</h4>
+                                    </div>
+                                    <p className="text-[8px] font-bold text-muted uppercase tracking-widest ml-11">Llama 3.1 • Projeção de Métricas e Tendências</p>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button onClick={extractChartData} className="p-2 glass flex items-center gap-2 text-[8px] font-black uppercase text-blue-400 hover:text-white"><RefreshCcw className="w-3 h-3" /> Recalcular</button>
-                                </div>
+                                <button onClick={extractChartData} className="px-5 py-2.5 glass bg-blue-500/10 text-blue-500 text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-500 hover:text-white transition-all border border-blue-500/20 flex items-center gap-3">
+                                    <RefreshCcw className="w-3 h-3" /> Atualizar Análise
+                                </button>
                             </div>
                             
-                            <div className="flex-1 min-h-0 bg-white/[0.02] border border-white/5 rounded-3xl p-8 relative overflow-hidden group">
-                                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={Array.isArray(chartData) ? chartData : []}>
-                                        <defs>
-                                            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                        <XAxis 
-                                            dataKey="name" 
-                                            stroke="rgba(255,255,255,0.3)" 
-                                            fontSize={8} 
-                                            fontWeight={900}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            dy={10}
-                                        />
-                                        <YAxis 
-                                            stroke="rgba(255,255,255,0.3)" 
-                                            fontSize={8} 
-                                            fontWeight={900}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            dx={-10}
-                                        />
-                                        <Tooltip 
-                                            contentStyle={{ 
-                                                backgroundColor: 'rgba(5, 5, 5, 0.9)', 
-                                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                borderRadius: '12px',
-                                                fontSize: '10px'
-                                            }}
-                                            itemStyle={{ color: '#3b82f6', fontWeight: 800 }}
-                                        />
-                                        <Area 
-                                            type="monotone" 
-                                            dataKey="valor" 
-                                            stroke="#3b82f6" 
-                                            strokeWidth={3}
-                                            fillOpacity={1} 
-                                            fill="url(#colorValue)" 
-                                            animationDuration={2000}
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </div>
-                            
-                            <div className="p-4 glass bg-blue-500/5 rounded-2xl flex items-center gap-4 border border-blue-500/20">
-                                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                                    <Activity className="w-4 h-4 text-blue-500" />
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 flex-1 min-h-[400px]">
+                                {/* Chart 1: Trend Area */}
+                                <div className="glass bg-white/[0.02] border-white/5 rounded-3xl p-6 flex flex-col gap-4 group">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                                            <Activity className="w-3 h-3" /> Tendência de Fluxo
+                                        </span>
+                                    </div>
+                                    <div className="flex-1 min-h-[250px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={chartData}>
+                                                <defs>
+                                                    <linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                                                <XAxis dataKey="name" hide />
+                                                <YAxis hide />
+                                                <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '9px' }} itemStyle={{ color: '#3b82f6' }} />
+                                                <Area type="monotone" dataKey="valor" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorArea)" animationDuration={1500} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase text-white/80">Tendência Identificada</span>
-                                    <span className="text-[8px] font-bold uppercase text-muted tracking-widest opacity-60 italic">A IA identificou correlações métricas no texto analisado.</span>
+
+                                {/* Chart 2: Comparative Bars */}
+                                <div className="glass bg-white/[0.02] border-white/5 rounded-3xl p-6 flex flex-col gap-4 group transition-all hover:bg-white/[0.04]">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                                            <BarChart3 className="w-3 h-3" /> Comparativo de Grandeza
+                                        </span>
+                                    </div>
+                                    <div className="flex-1 min-h-[250px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={chartData}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                                                <XAxis dataKey="name" stroke="rgba(255,255,255,0.2)" fontSize={8} fontWeight={800} axisLine={false} tickLine={false} dy={10} />
+                                                <YAxis hide />
+                                                <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ backgroundColor: '#050505', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '9px' }} />
+                                                <Bar dataKey="valor" radius={[6, 6, 0, 0]} animationDuration={2000}>
+                                                    {chartData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#3b82f6' : '#2dd4bf'} opacity={0.8} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-5 glass bg-blue-500/5 rounded-2xl flex items-center gap-5 border border-blue-500/20 group animate-in fade-in slide-in-from-bottom-2">
+                                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+                                    <Sparkles className="w-5 h-5 text-blue-500 animate-pulse" />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[10px] font-black uppercase text-white tracking-widest">Sincronização Neural de BI Ativa</span>
+                                    <span className="text-[8px] font-bold uppercase text-muted tracking-widest opacity-60 italic">Os gráficos acima representam a interpretação probabilística dos dados pelo motor Llama 3.1.</span>
                                 </div>
                             </div>
                         </div>
