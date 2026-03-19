@@ -67,6 +67,8 @@ const App = () => {
   const [viewMode, setViewMode] = useState('text'); // 'text' or 'table'
   const [tableStyle, setTableStyle] = useState('neural'); // neural, minimal, zebra, grid
   const [tableMode, setTableMode] = useState('STANDARD'); // STANDARD, INVOICE, LOGISTICS, TIMELINE
+  const [tableSearchTerm, setTableSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const chatEndRef = useRef(null);
   const aiPanelRef = useRef(null);
 
@@ -365,6 +367,42 @@ const App = () => {
     } finally {
       setTableLoading(false);
     }
+  };
+
+  const handleTableEdit = (rowIndex, key, value) => {
+    const newData = [...tableData];
+    newData[rowIndex][key] = value;
+    setTableData(newData);
+  };
+
+  const handleTableSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+
+    const sortedData = [...tableData].sort((a, b) => {
+      if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
+      if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+    setTableData(sortedData);
+  };
+
+  const copyTableAs = (format) => {
+    if (!tableData?.length) return;
+    let text = "";
+    if (format === 'csv') {
+      const keys = Object.keys(tableData[0]);
+      text = [keys.join(','), ...tableData.map(r => keys.map(k => `"${r[k]}"`).join(','))].join('\n');
+    } else if (format === 'markdown') {
+      const keys = Object.keys(tableData[0]);
+      text = `| ${keys.join(' | ')} |\n| ${keys.map(() => '---').join(' | ')} |\n` +
+        tableData.map(r => `| ${keys.map(k => r[k]).join(' | ')} |`).join('\n');
+    }
+    navigator.clipboard.writeText(text);
+    showNotify(`Copiado como ${format.toUpperCase()}!`);
   };
 
   const handleAuth = async (e) => {
@@ -1004,22 +1042,42 @@ const App = () => {
                       />
                     ) : viewMode === 'table' && tableData ? (
                       <div className="overflow-x-auto custom-scrollbar-h p-1">
-                        <div className="flex justify-end gap-2 mb-4">
-                          {[
-                            { id: 'neural', label: 'Noir' },
-                            { id: 'minimal', label: 'Minimal' },
-                            { id: 'zebra', label: 'Corporate' },
-                            { id: 'grid', label: 'Classic' }
-                          ].map(s => (
-                            <button
-                              key={s.id}
-                              onClick={() => setTableStyle(s.id)}
-                              className={`px-3 py-1 text-[7px] font-bold uppercase tracking-widest rounded-full border transition-all ${tableStyle === s.id ? 'bg-blue-500 text-white border-blue-400' : 'bg-transparent text-muted border-white/10 hover:border-white/20'}`}
-                            >
-                              {s.label}
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                          <div className="relative w-full md:w-64 group">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted group-focus-within:text-blue-500 transition-colors" />
+                            <input
+                              type="text"
+                              placeholder="Filtrar dados..."
+                              value={tableSearchTerm}
+                              onChange={(e) => setTableSearchTerm(e.target.value)}
+                              className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500/50 transition-all placeholder:text-muted/30"
+                            />
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <button onClick={() => copyTableAs('markdown')} className="px-3 py-1.5 glass bg-white/5 border-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2">
+                              <Copy className="w-3 h-3" /> MD
                             </button>
-                          ))}
+                            <button onClick={() => copyTableAs('csv')} className="px-3 py-1.5 glass bg-white/5 border-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2">
+                              <Database className="w-3 h-3" /> CSV
+                            </button>
+                            <div className="w-[1px] h-6 bg-white/10 mx-2" />
+                            {[
+                              { id: 'neural', label: 'Noir' },
+                              { id: 'minimal', label: 'Minimal' },
+                              { id: 'zebra', label: 'Corporate' },
+                              { id: 'grid', label: 'Classic' }
+                            ].map(s => (
+                              <button
+                                key={s.id}
+                                onClick={() => setTableStyle(s.id)}
+                                className={`px-3 py-1.5 text-[7px] font-bold uppercase tracking-widest rounded-lg border transition-all ${tableStyle === s.id ? 'bg-blue-500 text-white border-blue-400' : 'bg-transparent text-muted border-white/10 hover:border-white/20'}`}
+                              >
+                                {s.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
+
                         <table className={`w-full border-collapse text-[11px] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 ${tableStyle === 'neural' ? 'bg-white/[0.02] backdrop-blur-xl' :
                             tableStyle === 'minimal' ? 'bg-white/[0.05]' :
                               tableStyle === 'zebra' ? 'bg-black/20' : 'bg-transparent border-gray-400/20'
@@ -1029,25 +1087,42 @@ const App = () => {
                                 tableStyle === 'grid' ? 'bg-gray-500/10 border-gray-400' : 'bg-white/5'
                               }`}>
                               {Object.keys(tableData[0] || {}).map(key => (
-                                <th key={key} className={`p-4 font-black uppercase tracking-[0.2em] text-left relative overflow-hidden group ${tableStyle === 'grid' ? 'border border-white/10' : ''} ${tableStyle === 'neural' ? 'text-blue-400' : 'text-white'}`}>
+                                <th
+                                  key={key}
+                                  onClick={() => handleTableSort(key)}
+                                  className={`p-4 font-black uppercase tracking-[0.2em] text-left relative overflow-hidden group cursor-pointer transition-all hover:bg-white/5 ${tableStyle === 'grid' ? 'border border-white/10' : ''} ${tableStyle === 'neural' ? 'text-blue-400' : 'text-white'}`}
+                                >
                                   <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                   <span className="relative z-10 flex items-center gap-2">
                                     <div className={`w-1 h-1 rounded-full ${tableStyle === 'neural' ? 'bg-blue-500/40' : 'bg-white/20'}`} />
                                     {key}
+                                    {sortConfig.key === key && (
+                                      <span className="text-[8px] text-blue-500">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                                    )}
                                   </span>
                                 </th>
                               ))}
                             </tr>
                           </thead>
                           <tbody className={`${tableStyle === 'zebra' ? 'divide-y divide-white/5' : ''}`}>
-                            {tableData.map((row, i) => (
+                            {tableData.filter(row =>
+                              Object.values(row).some(v => String(v).toLowerCase().includes(tableSearchTerm.toLowerCase()))
+                            ).map((row, i) => (
                               <tr key={i} className={`transition-all group/row ${tableStyle === 'neural' ? 'hover:bg-blue-500/10 even:bg-white/[0.03]' :
                                   tableStyle === 'zebra' ? 'even:bg-white/[0.05] hover:bg-blue-500/5' :
                                     tableStyle === 'minimal' ? 'hover:bg-white/10' : 'border border-white/10 hover:bg-white/5'
                                 }`}>
-                                {Object.values(row).map((val, j) => (
-                                  <td key={j} className={`p-4 font-medium tracking-tight group-hover/row:text-white transition-colors ${tableStyle === 'grid' ? 'border border-white/10' : ''} ${tableStyle === 'neural' ? 'text-white/60' : 'text-white/80'}`}>
-                                    {val}
+                                {Object.keys(row).map((key, j) => (
+                                  <td key={j} className={`p-0 relative group/cell ${tableStyle === 'grid' ? 'border border-white/10' : ''}`}>
+                                    <input
+                                      value={row[key]}
+                                      onChange={(e) => handleTableEdit(i, key, e.target.value)}
+                                      className={`w-full h-full p-4 bg-transparent outline-none border-none text-[11px] font-medium tracking-tight transition-all focus:bg-blue-500/10 focus:text-white ${tableStyle === 'neural' ? 'text-white/60' : 'text-white/80'}`}
+                                      spellCheck="false"
+                                    />
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/cell:opacity-30 pointer-events-none">
+                                      <Edit3 className="w-3 h-3 text-white" />
+                                    </div>
                                   </td>
                                 ))}
                               </tr>
