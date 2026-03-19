@@ -5,25 +5,22 @@ import * as pdfjsLib from 'pdfjs-dist';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs`;
 
 let persistentWorker = null;
+let currentProgressHandler = null;
 
 const getWorker = async (onProgress) => {
+    // Atualizar o handler global sem reconfigurar o worker (evita DataCloneError)
+    currentProgressHandler = onProgress;
+
     if (persistentWorker) {
-        // Reset progress logger
-        persistentWorker.setParameters({
-            logger: m => {
-                if (m.status === 'recognizing text') {
-                    onProgress(Math.floor(m.progress * 100));
-                }
-            }
-        });
         return persistentWorker;
     }
 
     console.log('[NEURAL] Inicializando motor de reconhecimento...');
+    // No Tesseract 5+, o logger é passado na criação e gerido internamente pelo main thread
     persistentWorker = await createWorker('por+eng', 1, {
         logger: m => {
-            if (m.status === 'recognizing text') {
-                onProgress(Math.floor(m.progress * 100));
+            if (m.status === 'recognizing text' && typeof currentProgressHandler === 'function') {
+                currentProgressHandler(Math.floor(m.progress * 100));
             }
         },
         cachePath: 'neural-cache',

@@ -6,7 +6,8 @@ import {
   Shield, Zap, Globe, Menu, X, User, HelpCircle, ArrowRight,
   Cpu, Lock, Database, Headphones, Mail, Key, LogOut, Trash2,
   BarChart3, Users, Settings, Activity, Camera, Building2,
-  Edit3, Save, ChevronDown, Home, MessageSquare, PieChart, Send
+  Edit3, Save, ChevronDown, Home, MessageSquare, PieChart, Send,
+  FileCode, History, File
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useDropzone } from 'react-dropzone';
