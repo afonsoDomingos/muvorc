@@ -15,7 +15,7 @@ import { processImage, processPdf, warmUp } from './services/OCRService';
 import axios from 'axios';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { pack, Document, Packer, Paragraph, TextRun } from 'docx';
+import { Document, Packer, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart as RechartsPie, Pie, Cell, AreaChart, Area, LineChart, Line, Legend } from 'recharts';
@@ -87,6 +87,21 @@ const App = () => {
       aiPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
   };
+
+  const normalizedChartData = Array.isArray(chartData?.data)
+    ? chartData
+    : Array.isArray(chartData)
+      ? {
+        title: 'Dashboard Neural',
+        type: 'bar',
+        data: chartData.map((item, index) => ({
+          name: item?.name || item?.item || `Métrica ${index + 1}`,
+          value: Number(item?.value ?? item?.valor ?? 0),
+        })),
+      }
+      : null;
+  const chartSeries = normalizedChartData?.data || [];
+  const hasChartData = chartSeries.length > 0;
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -472,8 +487,15 @@ const App = () => {
       const cleanChartData = Array.isArray(res.data) 
         ? res.data.filter(r => r && typeof r === 'object' && !Array.isArray(r) && (r.name || r.item))
         : [];
-        
-      setChartData(cleanChartData);
+
+      setChartData({
+        title: 'Dashboard Neural',
+        type: 'bar',
+        data: cleanChartData.map((item, index) => ({
+          name: item.name || item.item || `Métrica ${index + 1}`,
+          value: Number(item.value ?? item.valor ?? 0),
+        })),
+      });
       setViewMode('chart');
       showNotify('Dashboard de Dados Gerado!');
     } catch (err) {
@@ -576,6 +598,18 @@ const App = () => {
     targetTable.data = sortedData;
     newTableData[activeTableIndex] = targetTable;
     setTableData(newTableData);
+  };
+
+  const getVisibleTableRows = () => {
+    const activeRows = tableData?.[activeTableIndex]?.data;
+    if (!Array.isArray(activeRows)) return [];
+
+    return activeRows
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => row && typeof row === 'object' && !Array.isArray(row))
+      .filter(({ row }) =>
+        Object.values(row).some(v => String(v || '').toLowerCase().includes(tableSearchTerm.toLowerCase()))
+      );
   };
 
   const copyTableAs = (format) => {
@@ -1173,7 +1207,7 @@ const App = () => {
                            >
                              Texto
                            </button>
-                           {chartData && (
+                           {hasChartData && (
                              <button
                                onClick={() => setViewMode('chart')}
                                className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'chart' ? 'bg-blue-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
@@ -1327,58 +1361,89 @@ const App = () => {
                         </div>
 
                         {tableData[activeTableIndex]?.data?.length > 0 ? (
-                          <table className={`w-full border-collapse text-[11px] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 ${tableStyle === 'neural' ? 'bg-white/[0.02] backdrop-blur-xl' :
-                              tableStyle === 'minimal' ? 'bg-white/[0.05]' :
-                                tableStyle === 'zebra' ? 'bg-black/20' : 'bg-transparent border-gray-400/20'
-                            }`}>
-                          <thead>
-                            <tr className={`border-b border-white/10 ${tableStyle === 'neural' ? 'bg-gradient-to-r from-blue-600/20 via-blue-900/10 to-transparent' :
-                                tableStyle === 'grid' ? 'bg-gray-500/10 border-gray-400' : 'bg-white/5'
-                              }`}>
-                              {Object.keys(tableData[activeTableIndex].data[0] || {}).map(key => (
-                                <th
-                                  key={key}
-                                  onClick={() => handleTableSort(key)}
-                                  className={`p-4 font-black uppercase tracking-[0.2em] text-left relative overflow-hidden group cursor-pointer transition-all hover:bg-white/5 ${tableStyle === 'grid' ? 'border border-white/10' : ''} ${tableStyle === 'neural' ? 'text-blue-400' : 'text-white'}`}
-                                >
-                                  <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                  <span className="relative z-10 flex items-center gap-2">
-                                    <div className={`w-1 h-1 rounded-full ${tableStyle === 'neural' ? 'bg-blue-500/40' : 'bg-white/20'}`} />
-                                    {key || 'Campo'}
-                                    {sortConfig.key === key && (
-                                      <span className="text-[8px] text-blue-500">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                                    )}
-                                  </span>
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className={`${tableStyle === 'zebra' ? 'divide-y divide-white/5' : ''}`}>
-                            {tableData[activeTableIndex].data.filter(row => row && typeof row === 'object' && !Array.isArray(row))
-                            .filter(row =>
-                              Object.values(row).some(v => String(v || '').toLowerCase().includes(tableSearchTerm.toLowerCase()))
-                            ).map((row, i) => (
-                              <tr key={i} className={`transition-all group/row ${tableStyle === 'neural' ? 'hover:bg-blue-500/10 even:bg-white/[0.03]' :
-                                  tableStyle === 'zebra' ? 'even:bg-white/[0.05] hover:bg-blue-500/5' :
-                                    tableStyle === 'minimal' ? 'hover:bg-white/10' : 'border border-white/10 hover:bg-white/5'
-                                }`}>
-                                {Object.keys(row || {}).map((key, j) => (
-                                  <td key={j} className={`p-0 relative group/cell ${tableStyle === 'grid' ? 'border border-white/10' : ''}`}>
-                                    <input
-                                      value={row[key] || ''}
-                                      onChange={(e) => handleTableEdit(i, key, e.target.value)}
-                                      className={`w-full h-full p-4 bg-transparent outline-none border-none text-[11px] font-medium tracking-tight transition-all focus:bg-blue-500/10 focus:text-white ${tableStyle === 'neural' ? 'text-white/60' : 'text-white/80'}`}
-                                      spellCheck="false"
-                                    />
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/cell:opacity-30 pointer-events-none">
-                                      <Edit3 className="w-3 h-3 text-white" />
+                          <>
+                            <div className="md:hidden space-y-3">
+                              {getVisibleTableRows().map(({ row, index }, i) => (
+                                <div key={index} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-xl shadow-black/10">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-blue-400">
+                                      Linha {i + 1}
+                                    </span>
+                                    <div className="px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[7px] font-black uppercase tracking-widest text-blue-400">
+                                      Mobile View
                                     </div>
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                                  </div>
+                                  <div className="space-y-3">
+                                    {Object.keys(row || {}).map((key) => (
+                                      <label key={key} className="block">
+                                        <span className="mb-1 block text-[8px] font-black uppercase tracking-[0.2em] text-muted">
+                                          {key || 'Campo'}
+                                        </span>
+                                        <input
+                                          value={row[key] || ''}
+                                          onChange={(e) => handleTableEdit(index, key, e.target.value)}
+                                          className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-[11px] font-medium text-white outline-none transition-all focus:border-blue-500/50 focus:bg-blue-500/10"
+                                          spellCheck="false"
+                                        />
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="hidden md:block">
+                              <table className={`w-full border-collapse text-[11px] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 ${tableStyle === 'neural' ? 'bg-white/[0.02] backdrop-blur-xl' :
+                                  tableStyle === 'minimal' ? 'bg-white/[0.05]' :
+                                    tableStyle === 'zebra' ? 'bg-black/20' : 'bg-transparent border-gray-400/20'
+                                }`}>
+                                <thead>
+                                  <tr className={`border-b border-white/10 ${tableStyle === 'neural' ? 'bg-gradient-to-r from-blue-600/20 via-blue-900/10 to-transparent' :
+                                      tableStyle === 'grid' ? 'bg-gray-500/10 border-gray-400' : 'bg-white/5'
+                                    }`}>
+                                    {Object.keys(tableData[activeTableIndex].data[0] || {}).map(key => (
+                                      <th
+                                        key={key}
+                                        onClick={() => handleTableSort(key)}
+                                        className={`p-4 font-black uppercase tracking-[0.2em] text-left relative overflow-hidden group cursor-pointer transition-all hover:bg-white/5 ${tableStyle === 'grid' ? 'border border-white/10' : ''} ${tableStyle === 'neural' ? 'text-blue-400' : 'text-white'}`}
+                                      >
+                                        <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <span className="relative z-10 flex items-center gap-2">
+                                          <div className={`w-1 h-1 rounded-full ${tableStyle === 'neural' ? 'bg-blue-500/40' : 'bg-white/20'}`} />
+                                          {key || 'Campo'}
+                                          {sortConfig.key === key && (
+                                            <span className="text-[8px] text-blue-500">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                                          )}
+                                        </span>
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody className={`${tableStyle === 'zebra' ? 'divide-y divide-white/5' : ''}`}>
+                                  {getVisibleTableRows().map(({ row, index }) => (
+                                    <tr key={index} className={`transition-all group/row ${tableStyle === 'neural' ? 'hover:bg-blue-500/10 even:bg-white/[0.03]' :
+                                        tableStyle === 'zebra' ? 'even:bg-white/[0.05] hover:bg-blue-500/5' :
+                                          tableStyle === 'minimal' ? 'hover:bg-white/10' : 'border border-white/10 hover:bg-white/5'
+                                      }`}>
+                                      {Object.keys(row || {}).map((key, j) => (
+                                        <td key={j} className={`p-0 relative group/cell ${tableStyle === 'grid' ? 'border border-white/10' : ''}`}>
+                                          <input
+                                            value={row[key] || ''}
+                                            onChange={(e) => handleTableEdit(index, key, e.target.value)}
+                                            className={`w-full h-full p-4 bg-transparent outline-none border-none text-[11px] font-medium tracking-tight transition-all focus:bg-blue-500/10 focus:text-white ${tableStyle === 'neural' ? 'text-white/60' : 'text-white/80'}`}
+                                            spellCheck="false"
+                                          />
+                                          <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/cell:opacity-30 pointer-events-none">
+                                            <Edit3 className="w-3 h-3 text-white" />
+                                          </div>
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
                      ) : tableLoading ? (
                            <div className="py-20 flex flex-col items-center justify-center gap-4 opacity-50">
                               <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -1409,7 +1474,7 @@ const App = () => {
                           </div>
                         </div>
                       </div>
-                     ) : viewMode === 'chart' && chartData ? (
+                     ) : viewMode === 'chart' && hasChartData ? (
                         <div className="h-full w-full p-4 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
                             <div className="flex justify-between items-center shrink-0">
                                 <div className="flex flex-col gap-1">
@@ -1436,7 +1501,7 @@ const App = () => {
                                     </div>
                                     <div className="flex-1 min-h-[250px]">
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={chartData}>
+                                            <AreaChart data={chartSeries}>
                                                 <defs>
                                                     <linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
                                                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -1447,7 +1512,7 @@ const App = () => {
                                                 <XAxis dataKey="name" hide />
                                                 <YAxis hide />
                                                 <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '9px' }} itemStyle={{ color: '#3b82f6' }} />
-                                                <Area type="monotone" dataKey="valor" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorArea)" animationDuration={1500} />
+                                                <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorArea)" animationDuration={1500} />
                                             </AreaChart>
                                         </ResponsiveContainer>
                                     </div>
@@ -1462,13 +1527,13 @@ const App = () => {
                                     </div>
                                     <div className="flex-1 min-h-[250px]">
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={chartData}>
+                                            <BarChart data={chartSeries}>
                                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
                                                 <XAxis dataKey="name" stroke="rgba(255,255,255,0.2)" fontSize={8} fontWeight={800} axisLine={false} tickLine={false} dy={10} />
                                                 <YAxis hide />
                                                 <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ backgroundColor: '#050505', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '9px' }} />
-                                                <Bar dataKey="valor" radius={[6, 6, 0, 0]} animationDuration={2000}>
-                                                    {chartData.map((entry, index) => (
+                                                <Bar dataKey="value" radius={[6, 6, 0, 0]} animationDuration={2000}>
+                                                    {chartSeries.map((entry, index) => (
                                                         <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#3b82f6' : '#2dd4bf'} opacity={0.8} />
                                                     ))}
                                                 </Bar>
@@ -1655,33 +1720,33 @@ const App = () => {
                           </button>
                         </div>
 
-                        {chartData ? (
+                        {hasChartData ? (
                           <div className="flex-1 flex flex-col pt-4 h-full">
                             <div className="flex justify-between items-start mb-8">
                               <div>
-                                <h4 className="text-[12px] uppercase tracking-widest font-black text-blue-500">{chartData.title || 'Análise de Métrica'}</h4>
-                                <p className="text-[8px] text-muted uppercase font-bold mt-1 tracking-tighter">Motor Neural Llama 3.1 • {chartData.type || 'Padrão'}</p>
+                                <h4 className="text-[12px] uppercase tracking-widest font-black text-blue-500">{normalizedChartData?.title || 'Análise de Métrica'}</h4>
+                                <p className="text-[8px] text-muted uppercase font-bold mt-1 tracking-tighter">Motor Neural Llama 3.1 • {normalizedChartData?.type || 'Padrão'}</p>
                               </div>
                               <div className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[8px] font-black text-blue-500 uppercase tracking-widest">LIVE ANALYTICS</div>
                             </div>
 
                             <div className="flex-1 min-h-[350px] mb-8 relative">
                               <ResponsiveContainer width="100%" height="100%">
-                                {chartData.type === 'pie' ? (
-                                  <RechartsPie data={chartData.data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={5}>
-                                    {chartData.data.map((_, i) => <Cell key={i} fill={['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899'][i % 5]} stroke="rgba(255,255,255,0.05)" />)}
+                                {normalizedChartData?.type === 'pie' ? (
+                                  <RechartsPie data={chartSeries} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={5}>
+                                    {chartSeries.map((_, i) => <Cell key={i} fill={['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899'][i % 5]} stroke="rgba(255,255,255,0.05)" />)}
                                     <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #1e3a8a', borderRadius: '16px' }} />
                                   </RechartsPie>
-                                ) : chartData.type === 'line' ? (
-                                  <LineChart data={chartData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                ) : normalizedChartData?.type === 'line' ? (
+                                  <LineChart data={chartSeries} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
                                     <XAxis dataKey="name" stroke="#ffffff30" fontSize={9} />
                                     <YAxis stroke="#ffffff30" fontSize={9} />
                                     <Tooltip contentStyle={{ backgroundColor: '#050505', border: '1px solid #3b82f6', borderRadius: '16px' }} />
                                     <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={4} dot={{ fill: '#3b82f6', r: 5 }} />
                                   </LineChart>
-                                ) : chartData.type === 'area' ? (
-                                  <AreaChart data={chartData.data}>
+                                ) : normalizedChartData?.type === 'area' ? (
+                                  <AreaChart data={chartSeries}>
                                     <defs>
                                       <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
@@ -1695,13 +1760,13 @@ const App = () => {
                                     <Area type="monotone" dataKey="value" stroke="#3b82f6" fillOpacity={1} fill="url(#colorValue)" strokeWidth={3} />
                                   </AreaChart>
                                 ) : (
-                                  <BarChart data={chartData.data}>
+                                  <BarChart data={chartSeries}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
                                     <XAxis dataKey="name" stroke="#ffffff30" fontSize={9} />
                                     <YAxis stroke="#ffffff30" fontSize={9} />
                                     <Tooltip cursor={{ fill: '#ffffff03' }} contentStyle={{ backgroundColor: '#050505', border: '1px solid #3b82f6', borderRadius: '16px' }} />
                                     <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                                      {chartData.data.map((_, i) => <Cell key={i} fill={i % 2 === 0 ? '#3b82f6' : '#8b5cf6'} />)}
+                                      {chartSeries.map((_, i) => <Cell key={i} fill={i % 2 === 0 ? '#3b82f6' : '#8b5cf6'} />)}
                                     </Bar>
                                   </BarChart>
                                 )}
@@ -1711,15 +1776,15 @@ const App = () => {
                             <div className="grid grid-cols-3 gap-6">
                               <div className="glass p-6 border-white/5 bg-white/[0.02] rounded-2xl hover:border-blue-500/30 transition-all">
                                 <p className="text-[9px] font-black text-muted uppercase tracking-widest mb-2">Neural Avg</p>
-                                <p className="text-2xl font-black text-main">{(chartData.data.reduce((a, b) => a + b.value, 0) / chartData.data.length).toFixed(1)}</p>
+                                <p className="text-2xl font-black text-main">{(chartSeries.reduce((a, b) => a + b.value, 0) / chartSeries.length).toFixed(1)}</p>
                               </div>
                               <div className="glass p-6 border-white/5 bg-white/[0.02] rounded-2xl hover:border-blue-500/30 transition-all">
                                 <p className="text-[9px] font-black text-muted uppercase tracking-widest mb-2">Pico Neural</p>
-                                <p className="text-2xl font-black text-blue-500">{Math.max(...chartData.data.map(d => d.value))}</p>
+                                <p className="text-2xl font-black text-blue-500">{Math.max(...chartSeries.map(d => d.value))}</p>
                               </div>
                               <div className="glass p-6 border-white/5 bg-white/[0.02] rounded-2xl hover:border-blue-500/30 transition-all">
                                 <p className="text-[9px] font-black text-muted uppercase tracking-widest mb-2">Volume</p>
-                                <p className="text-2xl font-black text-main">{chartData.data.length} <span className="text-[10px] text-muted">pts</span></p>
+                                <p className="text-2xl font-black text-main">{chartSeries.length} <span className="text-[10px] text-muted">pts</span></p>
                               </div>
                             </div>
                           </div>
