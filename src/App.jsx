@@ -15,7 +15,7 @@ import { processImage, processPdf, warmUp } from './services/OCRService';
 import axios from 'axios';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { pack, Document, Packer, Paragraph, TextRun } from 'docx';
+import { Document, Packer, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart as RechartsPie, Pie, Cell, AreaChart, Area, LineChart, Line, Legend } from 'recharts';
@@ -472,8 +472,15 @@ const App = () => {
       const cleanChartData = Array.isArray(res.data) 
         ? res.data.filter(r => r && typeof r === 'object' && !Array.isArray(r) && (r.name || r.item))
         : [];
-        
-      setChartData(cleanChartData);
+
+      setChartData({
+        title: 'Dashboard Neural',
+        type: 'bar',
+        data: cleanChartData.map((item, index) => ({
+          name: item.name || item.item || `Métrica ${index + 1}`,
+          value: Number(item.value ?? item.valor ?? 0),
+        })),
+      });
       setViewMode('chart');
       showNotify('Dashboard de Dados Gerado!');
     } catch (err) {
@@ -1655,7 +1662,7 @@ const App = () => {
                           </button>
                         </div>
 
-                        {chartData ? (
+                        {chartData?.data && Array.isArray(chartData.data) ? (
                           <div className="flex-1 flex flex-col pt-4 h-full">
                             <div className="flex justify-between items-start mb-8">
                               <div>
