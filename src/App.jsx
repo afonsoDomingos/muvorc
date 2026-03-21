@@ -600,6 +600,18 @@ const App = () => {
     setTableData(newTableData);
   };
 
+  const getVisibleTableRows = () => {
+    const activeRows = tableData?.[activeTableIndex]?.data;
+    if (!Array.isArray(activeRows)) return [];
+
+    return activeRows
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => row && typeof row === 'object' && !Array.isArray(row))
+      .filter(({ row }) =>
+        Object.values(row).some(v => String(v || '').toLowerCase().includes(tableSearchTerm.toLowerCase()))
+      );
+  };
+
   const copyTableAs = (format) => {
     if (!tableData?.length) return;
     let text = "";
@@ -1349,58 +1361,89 @@ const App = () => {
                         </div>
 
                         {tableData[activeTableIndex]?.data?.length > 0 ? (
-                          <table className={`w-full border-collapse text-[11px] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 ${tableStyle === 'neural' ? 'bg-white/[0.02] backdrop-blur-xl' :
-                              tableStyle === 'minimal' ? 'bg-white/[0.05]' :
-                                tableStyle === 'zebra' ? 'bg-black/20' : 'bg-transparent border-gray-400/20'
-                            }`}>
-                          <thead>
-                            <tr className={`border-b border-white/10 ${tableStyle === 'neural' ? 'bg-gradient-to-r from-blue-600/20 via-blue-900/10 to-transparent' :
-                                tableStyle === 'grid' ? 'bg-gray-500/10 border-gray-400' : 'bg-white/5'
-                              }`}>
-                              {Object.keys(tableData[activeTableIndex].data[0] || {}).map(key => (
-                                <th
-                                  key={key}
-                                  onClick={() => handleTableSort(key)}
-                                  className={`p-4 font-black uppercase tracking-[0.2em] text-left relative overflow-hidden group cursor-pointer transition-all hover:bg-white/5 ${tableStyle === 'grid' ? 'border border-white/10' : ''} ${tableStyle === 'neural' ? 'text-blue-400' : 'text-white'}`}
-                                >
-                                  <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                  <span className="relative z-10 flex items-center gap-2">
-                                    <div className={`w-1 h-1 rounded-full ${tableStyle === 'neural' ? 'bg-blue-500/40' : 'bg-white/20'}`} />
-                                    {key || 'Campo'}
-                                    {sortConfig.key === key && (
-                                      <span className="text-[8px] text-blue-500">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                                    )}
-                                  </span>
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className={`${tableStyle === 'zebra' ? 'divide-y divide-white/5' : ''}`}>
-                            {tableData[activeTableIndex].data.filter(row => row && typeof row === 'object' && !Array.isArray(row))
-                            .filter(row =>
-                              Object.values(row).some(v => String(v || '').toLowerCase().includes(tableSearchTerm.toLowerCase()))
-                            ).map((row, i) => (
-                              <tr key={i} className={`transition-all group/row ${tableStyle === 'neural' ? 'hover:bg-blue-500/10 even:bg-white/[0.03]' :
-                                  tableStyle === 'zebra' ? 'even:bg-white/[0.05] hover:bg-blue-500/5' :
-                                    tableStyle === 'minimal' ? 'hover:bg-white/10' : 'border border-white/10 hover:bg-white/5'
-                                }`}>
-                                {Object.keys(row || {}).map((key, j) => (
-                                  <td key={j} className={`p-0 relative group/cell ${tableStyle === 'grid' ? 'border border-white/10' : ''}`}>
-                                    <input
-                                      value={row[key] || ''}
-                                      onChange={(e) => handleTableEdit(i, key, e.target.value)}
-                                      className={`w-full h-full p-4 bg-transparent outline-none border-none text-[11px] font-medium tracking-tight transition-all focus:bg-blue-500/10 focus:text-white ${tableStyle === 'neural' ? 'text-white/60' : 'text-white/80'}`}
-                                      spellCheck="false"
-                                    />
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/cell:opacity-30 pointer-events-none">
-                                      <Edit3 className="w-3 h-3 text-white" />
+                          <>
+                            <div className="md:hidden space-y-3">
+                              {getVisibleTableRows().map(({ row, index }, i) => (
+                                <div key={index} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-xl shadow-black/10">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-blue-400">
+                                      Linha {i + 1}
+                                    </span>
+                                    <div className="px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[7px] font-black uppercase tracking-widest text-blue-400">
+                                      Mobile View
                                     </div>
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                                  </div>
+                                  <div className="space-y-3">
+                                    {Object.keys(row || {}).map((key) => (
+                                      <label key={key} className="block">
+                                        <span className="mb-1 block text-[8px] font-black uppercase tracking-[0.2em] text-muted">
+                                          {key || 'Campo'}
+                                        </span>
+                                        <input
+                                          value={row[key] || ''}
+                                          onChange={(e) => handleTableEdit(index, key, e.target.value)}
+                                          className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-[11px] font-medium text-white outline-none transition-all focus:border-blue-500/50 focus:bg-blue-500/10"
+                                          spellCheck="false"
+                                        />
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="hidden md:block">
+                              <table className={`w-full border-collapse text-[11px] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 ${tableStyle === 'neural' ? 'bg-white/[0.02] backdrop-blur-xl' :
+                                  tableStyle === 'minimal' ? 'bg-white/[0.05]' :
+                                    tableStyle === 'zebra' ? 'bg-black/20' : 'bg-transparent border-gray-400/20'
+                                }`}>
+                                <thead>
+                                  <tr className={`border-b border-white/10 ${tableStyle === 'neural' ? 'bg-gradient-to-r from-blue-600/20 via-blue-900/10 to-transparent' :
+                                      tableStyle === 'grid' ? 'bg-gray-500/10 border-gray-400' : 'bg-white/5'
+                                    }`}>
+                                    {Object.keys(tableData[activeTableIndex].data[0] || {}).map(key => (
+                                      <th
+                                        key={key}
+                                        onClick={() => handleTableSort(key)}
+                                        className={`p-4 font-black uppercase tracking-[0.2em] text-left relative overflow-hidden group cursor-pointer transition-all hover:bg-white/5 ${tableStyle === 'grid' ? 'border border-white/10' : ''} ${tableStyle === 'neural' ? 'text-blue-400' : 'text-white'}`}
+                                      >
+                                        <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <span className="relative z-10 flex items-center gap-2">
+                                          <div className={`w-1 h-1 rounded-full ${tableStyle === 'neural' ? 'bg-blue-500/40' : 'bg-white/20'}`} />
+                                          {key || 'Campo'}
+                                          {sortConfig.key === key && (
+                                            <span className="text-[8px] text-blue-500">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                                          )}
+                                        </span>
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody className={`${tableStyle === 'zebra' ? 'divide-y divide-white/5' : ''}`}>
+                                  {getVisibleTableRows().map(({ row, index }) => (
+                                    <tr key={index} className={`transition-all group/row ${tableStyle === 'neural' ? 'hover:bg-blue-500/10 even:bg-white/[0.03]' :
+                                        tableStyle === 'zebra' ? 'even:bg-white/[0.05] hover:bg-blue-500/5' :
+                                          tableStyle === 'minimal' ? 'hover:bg-white/10' : 'border border-white/10 hover:bg-white/5'
+                                      }`}>
+                                      {Object.keys(row || {}).map((key, j) => (
+                                        <td key={j} className={`p-0 relative group/cell ${tableStyle === 'grid' ? 'border border-white/10' : ''}`}>
+                                          <input
+                                            value={row[key] || ''}
+                                            onChange={(e) => handleTableEdit(index, key, e.target.value)}
+                                            className={`w-full h-full p-4 bg-transparent outline-none border-none text-[11px] font-medium tracking-tight transition-all focus:bg-blue-500/10 focus:text-white ${tableStyle === 'neural' ? 'text-white/60' : 'text-white/80'}`}
+                                            spellCheck="false"
+                                          />
+                                          <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/cell:opacity-30 pointer-events-none">
+                                            <Edit3 className="w-3 h-3 text-white" />
+                                          </div>
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
                      ) : tableLoading ? (
                            <div className="py-20 flex flex-col items-center justify-center gap-4 opacity-50">
                               <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
